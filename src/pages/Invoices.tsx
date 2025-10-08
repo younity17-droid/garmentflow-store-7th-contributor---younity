@@ -2,10 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Eye, Download } from "lucide-react";
+import { Eye, Download } from "lucide-react";
 import { format } from "date-fns";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
+import { CreateInvoiceDialog } from "@/components/Invoices/CreateInvoiceDialog";
 
 export default function Invoices() {
   const { data: invoices, isLoading } = useQuery({
@@ -130,9 +131,7 @@ export default function Invoices() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Invoices</h1>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />Create Invoice
-        </Button>
+        <CreateInvoiceDialog />
       </div>
 
       {isLoading ? (
@@ -168,9 +167,11 @@ export default function Invoices() {
           </Table>
         </div>
       )}
-      <p className="text-sm text-muted-foreground mt-4">
-        Invoice creation feature coming soon...
-      </p>
+      {invoices?.length === 0 && (
+        <p className="text-sm text-muted-foreground mt-4 text-center">
+          No invoices yet. Create your first invoice to get started!
+        </p>
+      )}
     </div>
   );
 }
