@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,8 +8,12 @@ import { format } from "date-fns";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
 import { CreateInvoiceDialog } from "@/components/Invoices/CreateInvoiceDialog";
+import { InvoiceViewDialog } from "@/components/Invoices/InvoiceViewDialog";
 
 export default function Invoices() {
+  const [viewInvoiceId, setViewInvoiceId] = useState<string | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+
   const { data: invoices, isLoading } = useQuery({
     queryKey: ["invoices"],
     queryFn: async () => {
@@ -127,8 +132,19 @@ export default function Invoices() {
     }
   };
 
+  const handleViewInvoice = (invoiceId: string) => {
+    setViewInvoiceId(invoiceId);
+    setViewDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
+      <InvoiceViewDialog
+        invoiceId={viewInvoiceId}
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+      />
+
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Invoices</h1>
         <CreateInvoiceDialog />
@@ -156,7 +172,9 @@ export default function Invoices() {
                   <TableCell>{format(new Date(inv.created_at), "PP")}</TableCell>
                   <TableCell>₹{inv.grand_total}</TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleViewInvoice(inv.id)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => downloadPDF(inv.id)}>
                       <Download className="h-4 w-4" />
                     </Button>
