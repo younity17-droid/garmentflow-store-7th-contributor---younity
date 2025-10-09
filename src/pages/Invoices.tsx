@@ -1,18 +1,31 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Download } from "lucide-react";
+import { Eye, Download, Trash2, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
 import { CreateInvoiceDialog } from "@/components/Invoices/CreateInvoiceDialog";
 import { InvoiceViewDialog } from "@/components/Invoices/InvoiceViewDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Invoices() {
   const [viewInvoiceId, setViewInvoiceId] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
+  const [cancelSaleId, setCancelSaleId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: invoices, isLoading } = useQuery({
     queryKey: ["invoices"],
@@ -137,6 +150,95 @@ export default function Invoices() {
     setViewDialogOpen(true);
   };
 
+  const deleteInvoice = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      // Delete invoice items first
+      const { error: itemsError } = await supabase
+        .from("invoice_items")
+        .delete()
+        .eq("invoice_id", invoiceId);
+      
+      if (itemsError) throw itemsError;
+
+      // Delete invoice
+      const { error } = await supabase
+        .from("invoices")
+        .delete()
+        .eq("id", invoiceId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Invoice deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      setDeleteInvoiceId(null);
+    },
+    onError: (error) => {
+      console.error("Delete error:", error);
+      toast.error("Failed to delete invoice");
+    },
+  });
+
+  const cancelSale = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      // Get invoice items to restore stock
+      const { data: items, error: itemsError } = await supabase
+        .from("invoice_items")
+        .select("*")
+        .eq("invoice_id", invoiceId);
+      
+      if (itemsError) throw itemsError;
+
+      // Restore stock for each item
+      for (const item of items || []) {
+        if (item.product_id) {
+          // Get current product stock
+          const { data: product } = await supabase
+            .from("products")
+            .select("quantity_in_stock")
+            .eq("id", item.product_id)
+            .single();
+          
+          if (product) {
+            // Restore stock
+            await supabase
+              .from("products")
+              .update({ 
+                quantity_in_stock: product.quantity_in_stock + item.quantity 
+              })
+              .eq("id", item.product_id);
+          }
+        }
+      }
+
+      // Delete invoice items
+      const { error: deleteItemsError } = await supabase
+        .from("invoice_items")
+        .delete()
+        .eq("invoice_id", invoiceId);
+      
+      if (deleteItemsError) throw deleteItemsError;
+
+      // Delete invoice
+      const { error } = await supabase
+        .from("invoices")
+        .delete()
+        .eq("id", invoiceId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Sale cancelled and stock restored");
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      setCancelSaleId(null);
+    },
+    onError: (error) => {
+      console.error("Cancel sale error:", error);
+      toast.error("Failed to cancel sale");
+    },
+  });
+
   return (
     <div className="space-y-6">
       <InvoiceViewDialog
@@ -178,6 +280,12 @@ export default function Invoices() {
                     <Button variant="ghost" size="icon" onClick={() => downloadPDF(inv.id)}>
                       <Download className="h-4 w-4" />
                     </Button>
+                    <Button variant="ghost" size="icon" onClick={() => setDeleteInvoiceId(inv.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => setCancelSaleId(inv.id)}>
+                      <XCircle className="h-4 w-4 text-orange-500" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -190,6 +298,48 @@ export default function Invoices() {
           No invoices yet. Create your first invoice to get started!
         </p>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteInvoiceId} onOpenChange={(open) => !open && setDeleteInvoiceId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invoice?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this invoice. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteInvoiceId && deleteInvoice.mutate(deleteInvoiceId)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Sale Confirmation Dialog */}
+      <AlertDialog open={!!cancelSaleId} onOpenChange={(open) => !open && setCancelSaleId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Sale?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete the invoice and restore the product stock. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cancelSaleId && cancelSale.mutate(cancelSaleId)}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              Cancel Sale
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

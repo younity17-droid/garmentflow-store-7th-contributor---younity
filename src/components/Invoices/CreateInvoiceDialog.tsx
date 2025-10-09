@@ -25,6 +25,7 @@ export function CreateInvoiceDialog() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('fixed');
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const queryClient = useQueryClient();
 
@@ -61,8 +62,11 @@ export function CreateInvoiceDialog() {
       if (!user) throw new Error("Not authenticated");
 
       const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
+      const discountValue = discountType === 'percentage' 
+        ? (subtotal * discountAmount) / 100 
+        : discountAmount;
       const taxAmount = subtotal * ((storeSettings?.tax_percentage || 0) / 100);
-      const grandTotal = subtotal + taxAmount - discountAmount;
+      const grandTotal = subtotal + taxAmount - discountValue;
 
       const { data: invoice, error: invError } = await supabase
         .from("invoices")
@@ -72,7 +76,8 @@ export function CreateInvoiceDialog() {
           subtotal,
           tax_amount: taxAmount,
           tax_percentage: storeSettings?.tax_percentage || 0,
-          discount_amount: discountAmount,
+          discount_amount: discountValue,
+          discount_type: discountType,
           grand_total: grandTotal,
           created_by: user.id,
           invoice_number: "", // Will be set by trigger
@@ -113,6 +118,7 @@ export function CreateInvoiceDialog() {
     setCustomerName("");
     setCustomerPhone("");
     setDiscountAmount(0);
+    setDiscountType('fixed');
     setItems([]);
   };
 
@@ -158,8 +164,11 @@ export function CreateInvoiceDialog() {
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
+  const discountValue = discountType === 'percentage' 
+    ? (subtotal * discountAmount) / 100 
+    : discountAmount;
   const taxAmount = subtotal * ((storeSettings?.tax_percentage || 0) / 100);
-  const grandTotal = subtotal + taxAmount - discountAmount;
+  const grandTotal = subtotal + taxAmount - discountValue;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -205,8 +214,9 @@ export function CreateInvoiceDialog() {
                 </Button>
               </div>
 
-              <div className="space-y-4">
-                {items.map((item, index) => (
+              <ScrollArea className="max-h-[400px]">
+                <div className="space-y-4 pr-4">
+                  {items.map((item, index) => (
                   <div key={index} className="border rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div className="grid grid-cols-2 gap-3 flex-1">
@@ -283,8 +293,9 @@ export function CreateInvoiceDialog() {
                       Total: ₹{item.totalPrice.toFixed(2)}
                     </div>
                   </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
 
             <div className="space-y-2 border-t pt-4">
@@ -292,17 +303,34 @@ export function CreateInvoiceDialog() {
                 <span>Subtotal:</span>
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="space-y-2">
                 <Label htmlFor="discount">Discount:</Label>
-                <Input
-                  id="discount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={discountAmount}
-                  onChange={(e) => setDiscountAmount(Number(e.target.value))}
-                  className="w-32"
-                />
+                <div className="flex gap-2 items-center">
+                  <Select value={discountType} onValueChange={(v: 'fixed' | 'percentage') => setDiscountType(v)}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">₹ Fixed</SelectItem>
+                      <SelectItem value="percentage">% Percent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    id="discount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={discountAmount}
+                    onChange={(e) => setDiscountAmount(Number(e.target.value))}
+                    className="w-32"
+                    placeholder={discountType === 'percentage' ? '0%' : '₹0'}
+                  />
+                  {discountType === 'percentage' && discountAmount > 0 && (
+                    <span className="text-sm text-muted-foreground">
+                      = ₹{discountValue.toFixed(2)}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex justify-between">
                 <span>Tax ({storeSettings?.tax_percentage}%):</span>
