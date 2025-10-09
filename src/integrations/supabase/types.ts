@@ -35,6 +35,30 @@ export type Database = {
         }
         Relationships: []
       }
+      colors: {
+        Row: {
+          created_at: string | null
+          hex_code: string | null
+          id: string
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          hex_code?: string | null
+          id?: string
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          hex_code?: string | null
+          id?: string
+          name?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       invoice_items: {
         Row: {
           created_at: string | null
@@ -134,9 +158,62 @@ export type Database = {
         }
         Relationships: []
       }
+      product_inventory: {
+        Row: {
+          color_id: string | null
+          created_at: string | null
+          id: string
+          product_id: string
+          quantity: number
+          size_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          color_id?: string | null
+          created_at?: string | null
+          id?: string
+          product_id: string
+          quantity?: number
+          size_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          color_id?: string | null
+          created_at?: string | null
+          id?: string
+          product_id?: string
+          quantity?: number
+          size_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_inventory_color_id_fkey"
+            columns: ["color_id"]
+            isOneToOne: false
+            referencedRelation: "colors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_inventory_size_id_fkey"
+            columns: ["size_id"]
+            isOneToOne: false
+            referencedRelation: "sizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category_id: string | null
+          color_ids: string[] | null
           cost_inr: number | null
           created_at: string | null
           description: string | null
@@ -145,12 +222,14 @@ export type Database = {
           name: string
           price_inr: number
           quantity_in_stock: number
+          secondary_image_url: string | null
           size_ids: string[] | null
           sku: string | null
           updated_at: string | null
         }
         Insert: {
           category_id?: string | null
+          color_ids?: string[] | null
           cost_inr?: number | null
           created_at?: string | null
           description?: string | null
@@ -159,12 +238,14 @@ export type Database = {
           name: string
           price_inr: number
           quantity_in_stock?: number
+          secondary_image_url?: string | null
           size_ids?: string[] | null
           sku?: string | null
           updated_at?: string | null
         }
         Update: {
           category_id?: string | null
+          color_ids?: string[] | null
           cost_inr?: number | null
           created_at?: string | null
           description?: string | null
@@ -173,6 +254,7 @@ export type Database = {
           name?: string
           price_inr?: number
           quantity_in_stock?: number
+          secondary_image_url?: string | null
           size_ids?: string[] | null
           sku?: string | null
           updated_at?: string | null

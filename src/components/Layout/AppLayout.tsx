@@ -7,6 +7,7 @@ import {
   Settings,
   FolderOpen,
   Ruler,
+  Palette,
   LogOut,
   Menu,
 } from 'lucide-react';
@@ -31,6 +32,7 @@ const navItems = [
   { title: 'Products', url: '/products', icon: Package },
   { title: 'Categories', url: '/categories', icon: FolderOpen },
   { title: 'Sizes', url: '/sizes', icon: Ruler },
+  { title: 'Colors', url: '/colors', icon: Palette },
   { title: 'Invoices', url: '/invoices', icon: Receipt },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];

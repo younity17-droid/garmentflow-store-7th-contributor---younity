@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Products from "./pages/Products";
 import Categories from "./pages/Categories";
 import Sizes from "./pages/Sizes";
+import Colors from "./pages/Colors";
 import Invoices from "./pages/Invoices";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -62,6 +63,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <Sizes />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/colors"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Colors />
                   </AppLayout>
                 </ProtectedRoute>
               }
