@@ -407,28 +407,31 @@ export default function Products() {
                 </div>
                 <div className="space-y-2">
                   <Label>Available Sizes & Prices</Label>
-                  <p className="text-xs text-muted-foreground">Select sizes and set price for each</p>
+                  <p className="text-xs text-muted-foreground">Select sizes and set price for each size</p>
                   <div className="grid grid-cols-2 gap-3">
                     {sizes?.map((size) => (
                       <div key={size.id} className="flex items-center gap-2">
-                        <Checkbox 
-                          checked={selectedSizes.includes(size.id)} 
-                          onCheckedChange={() => toggleSize(size.id)} 
+                        <Checkbox
+                          checked={selectedSizes.includes(size.id)}
+                          onCheckedChange={() => toggleSize(size.id)}
                         />
-                        <Label className="flex-shrink-0 w-12">{size.name}</Label>
+                        <Label className="flex-shrink-0 w-16">{size.name}</Label>
                         {selectedSizes.includes(size.id) && (
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="Price"
-                            value={sizePrices[size.id] || ""}
-                            onChange={(e) => setSizePrices(prev => ({
-                              ...prev,
-                              [size.id]: e.target.value
-                            }))}
-                            className="h-8"
-                            required
-                          />
+                          <div className="flex items-center gap-1 flex-1">
+                            <span className="text-xs text-muted-foreground">₹</span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="Price"
+                              value={sizePrices[size.id] || ""}
+                              onChange={(e) => setSizePrices(prev => ({
+                                ...prev,
+                                [size.id]: e.target.value
+                              }))}
+                              className="h-8"
+                              required
+                            />
+                          </div>
                         )}
                       </div>
                     ))}

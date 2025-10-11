@@ -132,10 +132,11 @@ export default function Invoices() {
 
       // Items
       yPos += 12;
+      pdf.setFontSize(9);
       items?.forEach((item) => {
         pdf.text(item.product_name, 20, yPos);
         pdf.text(item.size_name || "-", 100, yPos);
-        pdf.text(item.quantity.toString(), 130, yPos);
+        pdf.text(String(item.quantity), 130, yPos);
         pdf.text(`₹${item.unit_price}`, 150, yPos);
         pdf.text(`₹${item.total_price}`, pageWidth - 25, yPos, { align: "right" });
         yPos += 6;
