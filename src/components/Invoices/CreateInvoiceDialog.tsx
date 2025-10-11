@@ -134,7 +134,7 @@ export function CreateInvoiceDialog() {
   };
 
   const handleSelectProduct = (product: any) => {
-    setItems([...items, {
+    setItems([{
       productId: product.id,
       productName: product.name,
       sizeId: "",
@@ -142,11 +142,11 @@ export function CreateInvoiceDialog() {
       quantity: 1,
       unitPrice: Number(product.price_inr),
       totalPrice: Number(product.price_inr),
-    }]);
+    }, ...items]);
   };
 
   const addItem = () => {
-    setItems([...items, {
+    setItems([{
       productId: "",
       productName: "",
       sizeId: "",
@@ -154,7 +154,7 @@ export function CreateInvoiceDialog() {
       quantity: 1,
       unitPrice: 0,
       totalPrice: 0,
-    }]);
+    }, ...items]);
   };
 
   const removeItem = (index: number) => {
@@ -255,7 +255,7 @@ export function CreateInvoiceDialog() {
                 <ScrollArea className="h-[300px]">
                   <div className="space-y-4 p-4">
                     {items.map((item, index) => (
-                  <div key={index} className="border rounded-lg p-4 space-y-3">
+                  <div key={index} className="bg-muted/30 border rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div className="grid grid-cols-2 gap-3 flex-1">
                         <div>
@@ -287,11 +287,16 @@ export function CreateInvoiceDialog() {
                               <SelectValue placeholder="Select size (optional)" />
                             </SelectTrigger>
                             <SelectContent>
-                              {sizes?.map((size) => (
-                                <SelectItem key={size.id} value={size.id}>
-                                  {size.name}
-                                </SelectItem>
-                              ))}
+                              {sizes?.map((size) => {
+                                const sizePrice = productSizePrices?.find(
+                                  (sp) => sp.product_id === item.productId && sp.size_id === size.id
+                                );
+                                return (
+                                  <SelectItem key={size.id} value={size.id}>
+                                    {size.name}{sizePrice ? ` - ₹${sizePrice.price_inr}` : ''}
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                         </div>
