@@ -65,23 +65,50 @@ export default function Invoices() {
       const pdf = new jsPDF();
       const pageWidth = pdf.internal.pageSize.getWidth();
       
-      // Header
-      pdf.setFontSize(20);
-      pdf.text(storeSettings?.store_name || "Store", 15, 20);
-      pdf.setFontSize(10);
-      if (storeSettings?.address) pdf.text(storeSettings.address, 15, 28);
-      if (storeSettings?.phone) pdf.text(`Phone: ${storeSettings.phone}`, 15, 34);
-      if (storeSettings?.email) pdf.text(`Email: ${storeSettings.email}`, 15, 40);
+      // Store Logo (left side)
+      if (storeSettings?.logo_url) {
+        try {
+          const img = new Image();
+          img.src = storeSettings.logo_url;
+          await new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+          pdf.addImage(img, 'PNG', 15, 10, 30, 30);
+        } catch (error) {
+          console.error('Failed to load logo:', error);
+        }
+      }
+      
+      // Store Name (centered at top)
+      pdf.setFontSize(24);
+      pdf.setFont(undefined, 'bold');
+      pdf.text(storeSettings?.store_name || "Store", pageWidth / 2, 20, { align: "center" });
+      
+      // Store details (centered below name)
+      pdf.setFontSize(9);
+      pdf.setFont(undefined, 'normal');
+      let detailsY = 27;
+      if (storeSettings?.address) {
+        pdf.text(storeSettings.address, pageWidth / 2, detailsY, { align: "center" });
+        detailsY += 5;
+      }
+      if (storeSettings?.phone || storeSettings?.email) {
+        const contactInfo = [storeSettings?.phone, storeSettings?.email].filter(Boolean).join(" | ");
+        pdf.text(contactInfo, pageWidth / 2, detailsY, { align: "center" });
+      }
 
-      // Invoice details
-      pdf.setFontSize(16);
-      pdf.text("INVOICE", pageWidth - 15, 20, { align: "right" });
-      pdf.setFontSize(10);
-      pdf.text(`Invoice #: ${invoice.invoice_number}`, pageWidth - 15, 28, { align: "right" });
-      pdf.text(`Date: ${format(new Date(invoice.created_at), "PP")}`, pageWidth - 15, 34, { align: "right" });
+      // Invoice details (right side)
+      pdf.setFontSize(14);
+      pdf.setFont(undefined, 'bold');
+      pdf.text("INVOICE", pageWidth - 15, 15, { align: "right" });
+      pdf.setFontSize(9);
+      pdf.setFont(undefined, 'normal');
+      pdf.text(`#${invoice.invoice_number}`, pageWidth - 15, 22, { align: "right" });
+      pdf.text(`Date: ${format(new Date(invoice.created_at), "PP")}`, pageWidth - 15, 28, { align: "right" });
 
       // Customer info
-      let yPos = 55;
+      let yPos = 50;
       if (invoice.customer_name) {
         pdf.setFontSize(12);
         pdf.text("Bill To:", 15, yPos);
