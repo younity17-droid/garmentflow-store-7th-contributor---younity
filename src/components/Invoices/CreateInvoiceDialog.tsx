@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import { ProductSelectionDialog } from "./ProductSelectionDialog";
 
 interface InvoiceItem {
   productId: string;
@@ -22,10 +23,11 @@ interface InvoiceItem {
 
 export function CreateInvoiceDialog() {
   const [open, setOpen] = useState(false);
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('fixed');
+  const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('percentage');
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const queryClient = useQueryClient();
 
@@ -50,7 +52,16 @@ export function CreateInvoiceDialog() {
   const { data: storeSettings } = useQuery({
     queryKey: ["store-settings"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("store_settings").select("*").single();
+      const { data, error } = await supabase.from("store_settings").select("*").maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: productSizePrices } = useQuery({
+    queryKey: ["product-size-prices"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("product_size_prices").select("*");
       if (error) throw error;
       return data;
     },
@@ -118,8 +129,20 @@ export function CreateInvoiceDialog() {
     setCustomerName("");
     setCustomerPhone("");
     setDiscountAmount(0);
-    setDiscountType('fixed');
+    setDiscountType('percentage');
     setItems([]);
+  };
+
+  const handleSelectProduct = (product: any) => {
+    setItems([...items, {
+      productId: product.id,
+      productName: product.name,
+      sizeId: "",
+      sizeName: "",
+      quantity: 1,
+      unitPrice: Number(product.price_inr),
+      totalPrice: Number(product.price_inr),
+    }]);
   };
 
   const addItem = () => {
@@ -154,6 +177,15 @@ export function CreateInvoiceDialog() {
     if (field === "sizeId") {
       const size = sizes?.find((s) => s.id === value);
       newItems[index].sizeName = size?.name || "";
+      
+      // Update price based on size if size-specific pricing exists
+      const sizePrice = productSizePrices?.find(
+        (sp) => sp.product_id === newItems[index].productId && sp.size_id === value
+      );
+      if (sizePrice) {
+        newItems[index].unitPrice = Number(sizePrice.price_inr);
+        newItems[index].totalPrice = Number(sizePrice.price_inr) * newItems[index].quantity;
+      }
     }
 
     if (field === "quantity" || field === "unitPrice") {
@@ -208,7 +240,12 @@ export function CreateInvoiceDialog() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <Label>Items</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setProductDialogOpen(true)}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Item
                 </Button>
@@ -356,6 +393,12 @@ export function CreateInvoiceDialog() {
           </Button>
         </div>
       </DialogContent>
+
+      <ProductSelectionDialog
+        open={productDialogOpen}
+        onOpenChange={setProductDialogOpen}
+        onSelectProduct={handleSelectProduct}
+      />
     </Dialog>
   );
 }

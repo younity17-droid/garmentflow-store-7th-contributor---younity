@@ -11,7 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Pencil, Trash2, Search, Upload, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 
 export default function Products() {
   const [open, setOpen] = useState(false);
@@ -21,6 +23,7 @@ export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const [primaryImage, setPrimaryImage] = useState<string>("");
   const [secondaryImage, setSecondaryImage] = useState<string>("");
+  const [sizePrices, setSizePrices] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -60,6 +63,20 @@ export default function Products() {
     },
   });
 
+  const { data: productSizePrices } = useQuery({
+    queryKey: ["product-size-prices", editingId],
+    queryFn: async () => {
+      if (!editingId) return [];
+      const { data, error } = await supabase
+        .from("product_size_prices")
+        .select("*")
+        .eq("product_id", editingId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!editingId,
+  });
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -79,18 +96,53 @@ export default function Products() {
     };
 
     try {
+      let productId = editingId;
+
       if (editingId) {
         const { error } = await supabase.from("products").update(productData).eq("id", editingId);
         if (error) throw error;
-        toast({ title: "Product updated successfully" });
       } else {
-        const { error } = await supabase.from("products").insert(productData);
+        const { data: newProduct, error } = await supabase
+          .from("products")
+          .insert(productData)
+          .select()
+          .single();
         if (error) throw error;
-        toast({ title: "Product created successfully" });
+        productId = newProduct.id;
       }
+
+      // Save size-based prices
+      if (productId && selectedSizes.length > 0) {
+        // Delete existing size prices
+        await supabase.from("product_size_prices").delete().eq("product_id", productId);
+
+        // Insert new size prices
+        const sizePriceData = selectedSizes
+          .map((sizeId) => {
+            const price = sizePrices[sizeId];
+            if (!price) return null;
+            return {
+              product_id: productId,
+              size_id: sizeId,
+              price_inr: parseFloat(price),
+            };
+          })
+          .filter(Boolean);
+
+        if (sizePriceData.length > 0) {
+          const { error: priceError } = await supabase
+            .from("product_size_prices")
+            .insert(sizePriceData);
+          if (priceError) throw priceError;
+        }
+      }
+
+      toast({ title: editingId ? "Product updated successfully" : "Product created successfully" });
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["product-size-prices"] });
       resetForm();
     } catch (error) {
+      console.error("Save product error:", error);
       toast({ title: "Failed to save product", variant: "destructive" });
     }
   };
@@ -102,6 +154,7 @@ export default function Products() {
     setSelectedColors([]);
     setPrimaryImage("");
     setSecondaryImage("");
+    setSizePrices({});
   };
 
   const deleteMutation = useMutation({
@@ -115,19 +168,44 @@ export default function Products() {
     },
   });
 
-  const editProduct = (product: any) => {
+  const editProduct = async (product: any) => {
     setEditingId(product.id);
     setSelectedSizes(product.size_ids || []);
     setSelectedColors(product.color_ids || []);
     setPrimaryImage(product.image_url || "");
     setSecondaryImage(product.secondary_image_url || "");
+
+    // Load size prices
+    const { data: prices } = await supabase
+      .from("product_size_prices")
+      .select("*")
+      .eq("product_id", product.id);
+
+    const priceMap: Record<string, string> = {};
+    prices?.forEach((p) => {
+      priceMap[p.size_id] = p.price_inr.toString();
+    });
+    setSizePrices(priceMap);
+
     setOpen(true);
   };
 
   const toggleSize = (sizeId: string) => {
-    setSelectedSizes(prev => 
-      prev.includes(sizeId) ? prev.filter(id => id !== sizeId) : [...prev, sizeId]
-    );
+    setSelectedSizes(prev => {
+      const newSizes = prev.includes(sizeId) 
+        ? prev.filter(id => id !== sizeId) 
+        : [...prev, sizeId];
+      
+      // Remove price if size is deselected
+      if (!newSizes.includes(sizeId)) {
+        setSizePrices(prevPrices => {
+          const { [sizeId]: _, ...rest } = prevPrices;
+          return rest;
+        });
+      }
+      
+      return newSizes;
+    });
   };
 
   const toggleColor = (colorId: string) => {
@@ -266,13 +344,31 @@ export default function Products() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Available Sizes</Label>
-                  <div className="grid grid-cols-4 gap-3">
+                  <Label>Available Sizes & Prices</Label>
+                  <p className="text-xs text-muted-foreground">Select sizes and set price for each</p>
+                  <div className="grid grid-cols-2 gap-3">
                     {sizes?.map((size) => (
-                      <label key={size.id} className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox checked={selectedSizes.includes(size.id)} onCheckedChange={() => toggleSize(size.id)} />
-                        <span>{size.name}</span>
-                      </label>
+                      <div key={size.id} className="flex items-center gap-2">
+                        <Checkbox 
+                          checked={selectedSizes.includes(size.id)} 
+                          onCheckedChange={() => toggleSize(size.id)} 
+                        />
+                        <Label className="flex-shrink-0 w-12">{size.name}</Label>
+                        {selectedSizes.includes(size.id) && (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Price"
+                            value={sizePrices[size.id] || ""}
+                            onChange={(e) => setSizePrices(prev => ({
+                              ...prev,
+                              [size.id]: e.target.value
+                            }))}
+                            className="h-8"
+                            required
+                          />
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -340,19 +436,57 @@ export default function Products() {
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{product.sku || "-"}</TableCell>
                     <TableCell>{category?.name || "-"}</TableCell>
-                    <TableCell>{productSizes?.map(s => s.name).join(", ") || "-"}</TableCell>
+                    <TableCell>
+                      {productSizes && productSizes.length > 0 ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8">
+                              {productSizes.length} {productSizes.length === 1 ? 'Size' : 'Sizes'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-2">
+                            <div className="flex flex-wrap gap-1">
+                              {productSizes.map(s => (
+                                <Badge key={s.id} variant="secondary">
+                                  {s.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      ) : "-"}
+                    </TableCell>
                     <TableCell>
                       {productColors && productColors.length > 0 ? (
-                        <div className="flex gap-1">
-                          {productColors.map(c => (
-                            <div
-                              key={c.id}
-                              className="w-5 h-5 rounded border"
-                              style={{ backgroundColor: c.hex_code || "#000000" }}
-                              title={c.name}
-                            />
-                          ))}
-                        </div>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8">
+                              <div className="flex -space-x-1 mr-2">
+                                {productColors.slice(0, 3).map(c => (
+                                  <div
+                                    key={c.id}
+                                    className="w-4 h-4 rounded-full border-2 border-background"
+                                    style={{ backgroundColor: c.hex_code || "#000000" }}
+                                  />
+                                ))}
+                              </div>
+                              {productColors.length}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-2">
+                            <div className="space-y-1">
+                              {productColors.map(c => (
+                                <div key={c.id} className="flex items-center gap-2">
+                                  <div
+                                    className="w-4 h-4 rounded border"
+                                    style={{ backgroundColor: c.hex_code || "#000000" }}
+                                  />
+                                  <span className="text-sm">{c.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       ) : "-"}
                     </TableCell>
                     <TableCell>₹{product.price_inr}</TableCell>
