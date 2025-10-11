@@ -240,10 +240,10 @@ export function CreateInvoiceDialog() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <Label>Items</Label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => setProductDialogOpen(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -251,9 +251,10 @@ export function CreateInvoiceDialog() {
                 </Button>
               </div>
 
-              <ScrollArea className="max-h-[400px]">
-                <div className="space-y-4 pr-4">
-                  {items.map((item, index) => (
+              <div className="border rounded-lg">
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-4 p-4">
+                    {items.map((item, index) => (
                   <div key={index} className="border rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div className="grid grid-cols-2 gap-3 flex-1">
@@ -330,9 +331,10 @@ export function CreateInvoiceDialog() {
                       Total: ₹{item.totalPrice.toFixed(2)}
                     </div>
                   </div>
-                  ))}
-                </div>
-              </ScrollArea>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
             </div>
 
             <div className="space-y-2 border-t pt-4">

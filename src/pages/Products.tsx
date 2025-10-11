@@ -23,6 +23,10 @@ export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const [primaryImage, setPrimaryImage] = useState<string>("");
   const [secondaryImage, setSecondaryImage] = useState<string>("");
+  const [primaryImageFile, setPrimaryImageFile] = useState<File | null>(null);
+  const [secondaryImageFile, setSecondaryImageFile] = useState<File | null>(null);
+  const [isUploadingPrimary, setIsUploadingPrimary] = useState(false);
+  const [isUploadingSecondary, setIsUploadingSecondary] = useState(false);
   const [sizePrices, setSizePrices] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -77,9 +81,50 @@ export default function Products() {
     enabled: !!editingId,
   });
 
+  const uploadImage = async (file: File): Promise<string> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+
+    let finalPrimaryImage = primaryImage;
+    let finalSecondaryImage = secondaryImage;
+
+    try {
+      if (primaryImageFile) {
+        setIsUploadingPrimary(true);
+        finalPrimaryImage = await uploadImage(primaryImageFile);
+      }
+      if (secondaryImageFile) {
+        setIsUploadingSecondary(true);
+        finalSecondaryImage = await uploadImage(secondaryImageFile);
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast({ title: 'Failed to upload images', variant: 'destructive' });
+      setIsUploadingPrimary(false);
+      setIsUploadingSecondary(false);
+      return;
+    } finally {
+      setIsUploadingPrimary(false);
+      setIsUploadingSecondary(false);
+    }
     
     const productData = {
       name: formData.get("name") as string,
@@ -91,8 +136,8 @@ export default function Products() {
       category_id: (formData.get("category_id") as string) || null,
       size_ids: selectedSizes.length > 0 ? selectedSizes : null,
       color_ids: selectedColors.length > 0 ? selectedColors : null,
-      image_url: primaryImage || null,
-      secondary_image_url: secondaryImage || null,
+      image_url: finalPrimaryImage || null,
+      secondary_image_url: finalSecondaryImage || null,
     };
 
     try {
@@ -154,6 +199,8 @@ export default function Products() {
     setSelectedColors([]);
     setPrimaryImage("");
     setSecondaryImage("");
+    setPrimaryImageFile(null);
+    setSecondaryImageFile(null);
     setSizePrices({});
   };
 
@@ -261,18 +308,22 @@ export default function Products() {
                   <Textarea id="description" name="description" defaultValue={editingId ? products?.find(p => p.id === editingId)?.description || "" : ""} />
                 </div>
 
-                {/* Product Images */}
                 <div className="space-y-4">
                   <Label>Product Images (Up to 2)</Label>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="primaryImage" className="text-sm text-muted-foreground">Primary Image URL</Label>
+                      <Label htmlFor="primaryImageFile" className="text-sm text-muted-foreground">Primary Image</Label>
                       <Input
-                        id="primaryImage"
-                        type="url"
-                        placeholder="https://..."
-                        value={primaryImage}
-                        onChange={(e) => setPrimaryImage(e.target.value)}
+                        id="primaryImageFile"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setPrimaryImageFile(file);
+                            setPrimaryImage(URL.createObjectURL(file));
+                          }
+                        }}
                       />
                       {primaryImage && (
                         <div className="relative">
@@ -282,7 +333,10 @@ export default function Products() {
                             variant="destructive"
                             size="icon"
                             className="absolute top-2 right-2 h-6 w-6"
-                            onClick={() => setPrimaryImage("")}
+                            onClick={() => {
+                              setPrimaryImage("");
+                              setPrimaryImageFile(null);
+                            }}
                           >
                             <X className="h-3 w-3" />
                           </Button>
@@ -290,13 +344,18 @@ export default function Products() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="secondaryImage" className="text-sm text-muted-foreground">Secondary Image URL</Label>
+                      <Label htmlFor="secondaryImageFile" className="text-sm text-muted-foreground">Secondary Image</Label>
                       <Input
-                        id="secondaryImage"
-                        type="url"
-                        placeholder="https://..."
-                        value={secondaryImage}
-                        onChange={(e) => setSecondaryImage(e.target.value)}
+                        id="secondaryImageFile"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setSecondaryImageFile(file);
+                            setSecondaryImage(URL.createObjectURL(file));
+                          }
+                        }}
                       />
                       {secondaryImage && (
                         <div className="relative">
@@ -306,7 +365,10 @@ export default function Products() {
                             variant="destructive"
                             size="icon"
                             className="absolute top-2 right-2 h-6 w-6"
-                            onClick={() => setSecondaryImage("")}
+                            onClick={() => {
+                              setSecondaryImage("");
+                              setSecondaryImageFile(null);
+                            }}
                           >
                             <X className="h-3 w-3" />
                           </Button>
@@ -391,7 +453,9 @@ export default function Products() {
                 </div>
                 <div className="flex justify-end gap-2 pt-4">
                   <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
-                  <Button type="submit">{editingId ? "Update" : "Create"}</Button>
+                  <Button type="submit" disabled={isUploadingPrimary || isUploadingSecondary}>
+                    {isUploadingPrimary || isUploadingSecondary ? "Uploading..." : (editingId ? "Update" : "Create")}
+                  </Button>
                 </div>
               </form>
             </ScrollArea>
