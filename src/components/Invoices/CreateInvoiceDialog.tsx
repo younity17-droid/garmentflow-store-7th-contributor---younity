@@ -16,6 +16,8 @@ interface InvoiceItem {
   productName: string;
   sizeId?: string;
   sizeName?: string;
+  colorId?: string;
+  colorName?: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
@@ -43,7 +45,16 @@ export function CreateInvoiceDialog() {
   const { data: sizes } = useQuery({
     queryKey: ["sizes"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("sizes").select("*");
+      const { data, error } = await supabase.from("sizes").select("*").order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: colors } = useQuery({
+    queryKey: ["colors"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("colors").select("*").order("sort_order");
       if (error) throw error;
       return data;
     },
@@ -139,6 +150,8 @@ export function CreateInvoiceDialog() {
       productName: product.name,
       sizeId: "",
       sizeName: "",
+      colorId: "",
+      colorName: "",
       quantity: 1,
       unitPrice: Number(product.price_inr),
       totalPrice: Number(product.price_inr),
@@ -151,6 +164,8 @@ export function CreateInvoiceDialog() {
       productName: "",
       sizeId: "",
       sizeName: "",
+      colorId: "",
+      colorName: "",
       quantity: 1,
       unitPrice: 0,
       totalPrice: 0,
@@ -177,7 +192,7 @@ export function CreateInvoiceDialog() {
     if (field === "sizeId") {
       const size = sizes?.find((s) => s.id === value);
       newItems[index].sizeName = size?.name || "";
-      
+
       // Update price based on size if size-specific pricing exists
       const sizePrice = productSizePrices?.find(
         (sp) => sp.product_id === newItems[index].productId && sp.size_id === value
@@ -186,6 +201,11 @@ export function CreateInvoiceDialog() {
         newItems[index].unitPrice = Number(sizePrice.price_inr);
         newItems[index].totalPrice = Number(sizePrice.price_inr) * newItems[index].quantity;
       }
+    }
+
+    if (field === "colorId") {
+      const color = colors?.find((c) => c.id === value);
+      newItems[index].colorName = color?.name || "";
     }
 
     if (field === "quantity" || field === "unitPrice") {
@@ -282,21 +302,58 @@ export function CreateInvoiceDialog() {
                           <Select
                             value={item.sizeId}
                             onValueChange={(value) => updateItem(index, "sizeId", value)}
+                            disabled={!item.productId}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select size (optional)" />
                             </SelectTrigger>
                             <SelectContent>
-                              {sizes?.map((size) => {
-                                const sizePrice = productSizePrices?.find(
-                                  (sp) => sp.product_id === item.productId && sp.size_id === size.id
-                                );
-                                return (
-                                  <SelectItem key={size.id} value={size.id}>
-                                    {size.name}{sizePrice ? ` - ₹${sizePrice.price_inr}` : ''}
+                              {sizes
+                                ?.filter((size) => {
+                                  const product = products?.find((p) => p.id === item.productId);
+                                  return product?.size_ids?.includes(size.id);
+                                })
+                                .map((size) => {
+                                  const sizePrice = productSizePrices?.find(
+                                    (sp) => sp.product_id === item.productId && sp.size_id === size.id
+                                  );
+                                  return (
+                                    <SelectItem key={size.id} value={size.id}>
+                                      {size.name}{sizePrice ? ` - ₹${sizePrice.price_inr}` : ''}
+                                    </SelectItem>
+                                  );
+                                })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label>Color</Label>
+                          <Select
+                            value={item.colorId}
+                            onValueChange={(value) => updateItem(index, "colorId", value)}
+                            disabled={!item.productId}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select color (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {colors
+                                ?.filter((color) => {
+                                  const product = products?.find((p) => p.id === item.productId);
+                                  return product?.color_ids?.includes(color.id);
+                                })
+                                .map((color) => (
+                                  <SelectItem key={color.id} value={color.id}>
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className="w-4 h-4 rounded border"
+                                        style={{ backgroundColor: color.hex_code || "#000000" }}
+                                      />
+                                      {color.name}
+                                    </div>
                                   </SelectItem>
-                                );
-                              })}
+                                ))}
                             </SelectContent>
                           </Select>
                         </div>
