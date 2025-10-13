@@ -21,6 +21,7 @@ export default function Products() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [primaryImage, setPrimaryImage] = useState<string>("");
   const [secondaryImage, setSecondaryImage] = useState<string>("");
   const [primaryImageFile, setPrimaryImageFile] = useState<File | null>(null);
@@ -68,7 +69,18 @@ export default function Products() {
   });
 
   const { data: productSizePrices } = useQuery({
-    queryKey: ["product-size-prices", editingId],
+    queryKey: ["product-size-prices"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_size_prices")
+        .select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: editingProductSizePrices } = useQuery({
+    queryKey: ["editing-product-size-prices", editingId],
     queryFn: async () => {
       if (!editingId) return [];
       const { data, error } = await supabase
@@ -262,17 +274,19 @@ export default function Products() {
   };
 
   // Filter products based on search
-  const filteredProducts = products?.filter(product =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = products?.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || product.category_id === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">Products</h1>
-        <div className="flex items-center gap-4 flex-1 max-w-md">
+        <div className="flex items-center gap-4 flex-1 max-w-2xl">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -282,6 +296,17 @@ export default function Products() {
               className="pl-10"
             />
           </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories?.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); else setOpen(v); }}>
           <DialogTrigger asChild>
@@ -511,13 +536,21 @@ export default function Products() {
                               {productSizes.length} {productSizes.length === 1 ? 'Size' : 'Sizes'}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-2">
-                            <div className="flex flex-wrap gap-1">
-                              {productSizes.map(s => (
-                                <Badge key={s.id} variant="secondary">
-                                  {s.name}
-                                </Badge>
-                              ))}
+                          <PopoverContent className="w-auto p-3">
+                            <div className="space-y-2">
+                              {productSizes.map(s => {
+                                const sizePrice = productSizePrices?.find(
+                                  sp => sp.product_id === product.id && sp.size_id === s.id
+                                );
+                                return (
+                                  <div key={s.id} className="flex items-center justify-between gap-4">
+                                    <Badge variant="secondary">{s.name}</Badge>
+                                    {sizePrice && (
+                                      <span className="text-sm font-medium">₹{sizePrice.price_inr}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </PopoverContent>
                         </Popover>

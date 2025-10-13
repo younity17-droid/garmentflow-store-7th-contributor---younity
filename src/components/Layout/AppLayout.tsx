@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Moon,
   Sun,
+  DollarSign,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ const navItems = [
   { title: 'Colors', url: '/colors', icon: Palette },
   { title: 'Invoices', url: '/invoices', icon: Receipt },
   { title: 'Trending Products', url: '/trending', icon: TrendingUp },
+  { title: 'Profits', url: '/profits', icon: DollarSign },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
 

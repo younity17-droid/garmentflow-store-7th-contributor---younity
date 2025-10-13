@@ -144,26 +144,27 @@ export default function Invoices() {
 
       // Totals
       yPos += 10;
+      pdf.setFontSize(10);
       pdf.text("Subtotal:", pageWidth - 70, yPos);
-      pdf.text(`₹${invoice.subtotal}`, pageWidth - 25, yPos, { align: "right" });
-      
+      pdf.text(invoice.subtotal.toString(), pageWidth - 25, yPos, { align: "right" });
+
       if (invoice.discount_amount > 0) {
         yPos += 6;
         pdf.text("Discount:", pageWidth - 70, yPos);
-        pdf.text(`-₹${invoice.discount_amount}`, pageWidth - 25, yPos, { align: "right" });
+        pdf.text(`-${invoice.discount_amount}`, pageWidth - 25, yPos, { align: "right" });
       }
-      
+
       if (invoice.tax_amount > 0) {
         yPos += 6;
         pdf.text(`Tax (${invoice.tax_percentage}%):`, pageWidth - 70, yPos);
-        pdf.text(`₹${invoice.tax_amount}`, pageWidth - 25, yPos, { align: "right" });
+        pdf.text(invoice.tax_amount.toString(), pageWidth - 25, yPos, { align: "right" });
       }
-      
+
       yPos += 8;
       pdf.setFontSize(12);
       pdf.setFont(undefined, "bold");
       pdf.text("Grand Total:", pageWidth - 70, yPos);
-      pdf.text(`₹${invoice.grand_total}`, pageWidth - 25, yPos, { align: "right" });
+      pdf.text(invoice.grand_total.toString(), pageWidth - 25, yPos, { align: "right" });
 
       pdf.save(`Invoice-${invoice.invoice_number}.pdf`);
       toast.success("PDF downloaded successfully");

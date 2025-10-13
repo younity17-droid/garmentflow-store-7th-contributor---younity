@@ -15,6 +15,7 @@ import Sizes from "./pages/Sizes";
 import Colors from "./pages/Colors";
 import Invoices from "./pages/Invoices";
 import Trending from "./pages/Trending";
+import Profits from "./pages/Profits";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -96,6 +97,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <Trending />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profits"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Profits />
                   </AppLayout>
                 </ProtectedRoute>
               }

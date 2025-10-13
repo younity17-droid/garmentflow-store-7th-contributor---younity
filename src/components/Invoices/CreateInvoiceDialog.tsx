@@ -28,8 +28,10 @@ export function CreateInvoiceDialog() {
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountAmount, setDiscountAmount] = useState<number | "">("" as any);
   const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('percentage');
+  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'pending'>('paid');
+  const [expectedDate, setExpectedDate] = useState<Date | undefined>();
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const queryClient = useQueryClient();
 
