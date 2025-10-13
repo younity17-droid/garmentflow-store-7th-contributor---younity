@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 
 interface InvoiceViewDialogProps {
   invoiceId: string | null;
@@ -12,6 +14,9 @@ interface InvoiceViewDialogProps {
 }
 
 export function InvoiceViewDialog({ invoiceId, open, onOpenChange }: InvoiceViewDialogProps) {
+  const [whatsappQR, setWhatsappQR] = useState<string>("");
+  const [instagramQR, setInstagramQR] = useState<string>("");
+
   const { data: invoice } = useQuery({
     queryKey: ["invoice", invoiceId],
     queryFn: async () => {
@@ -49,6 +54,30 @@ export function InvoiceViewDialog({ invoiceId, open, onOpenChange }: InvoiceView
       return data;
     },
   });
+
+  useEffect(() => {
+    const generateQRCodes = async () => {
+      if (storeSettings?.whatsapp_channel) {
+        try {
+          const qr = await QRCode.toDataURL(storeSettings.whatsapp_channel, { width: 100 });
+          setWhatsappQR(qr);
+        } catch (err) {
+          console.error("WhatsApp QR generation failed", err);
+        }
+      }
+      if (storeSettings?.instagram_page) {
+        try {
+          const qr = await QRCode.toDataURL(storeSettings.instagram_page, { width: 100 });
+          setInstagramQR(qr);
+        } catch (err) {
+          console.error("Instagram QR generation failed", err);
+        }
+      }
+    };
+    if (storeSettings) {
+      generateQRCodes();
+    }
+  }, [storeSettings]);
 
   if (!invoice) return null;
 
@@ -141,6 +170,27 @@ export function InvoiceViewDialog({ invoiceId, open, onOpenChange }: InvoiceView
               <span>₹{invoice.grand_total}</span>
             </div>
           </div>
+
+          {/* Social Media QR Codes */}
+          {(whatsappQR || instagramQR) && (
+            <>
+              <Separator />
+              <div className="flex justify-between items-center">
+                {whatsappQR && (
+                  <div className="text-center">
+                    <img src={whatsappQR} alt="WhatsApp" className="w-24 h-24 mx-auto" />
+                    <p className="text-xs mt-1 font-semibold">Join our WhatsApp</p>
+                  </div>
+                )}
+                {instagramQR && (
+                  <div className="text-center">
+                    <img src={instagramQR} alt="Instagram" className="w-24 h-24 mx-auto" />
+                    <p className="text-xs mt-1 font-semibold">Follow us on Instagram</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

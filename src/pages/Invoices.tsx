@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Download, Trash2, XCircle } from "lucide-react";
+import { Eye, Download, Trash2, XCircle, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ export default function Invoices() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
   const [cancelSaleId, setCancelSaleId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const queryClient = useQueryClient();
 
   const { data: invoices, isLoading } = useQuery({
@@ -278,7 +280,18 @@ export default function Invoices() {
 
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Invoices</h1>
-        <CreateInvoiceDialog />
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by customer name or date..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 w-[300px]"
+            />
+          </div>
+          <CreateInvoiceDialog />
+        </div>
       </div>
 
       {isLoading ? (
@@ -296,7 +309,13 @@ export default function Invoices() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoices?.map((inv) => (
+              {invoices?.filter((inv) => {
+                if (!searchQuery) return true;
+                const query = searchQuery.toLowerCase();
+                const customerMatch = inv.customer_name?.toLowerCase().includes(query);
+                const dateMatch = format(new Date(inv.created_at), "PP").toLowerCase().includes(query);
+                return customerMatch || dateMatch;
+              }).map((inv) => (
                 <TableRow key={inv.id}>
                   <TableCell className="font-medium">{inv.invoice_number}</TableCell>
                   <TableCell>{inv.customer_name || "-"}</TableCell>

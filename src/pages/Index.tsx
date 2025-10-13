@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useDate } from '@/contexts/DateContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -8,9 +8,11 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { SalesOverview } from '@/components/Dashboard/SalesOverview';
 import { ProductSales } from '@/components/Dashboard/ProductSales';
+import { LowStockProducts } from '@/components/Dashboard/LowStockProducts';
+import { YearlySalesChart } from '@/components/Dashboard/YearlySalesChart';
 
 const Index = () => {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { selectedDate, setSelectedDate } = useDate();
 
   return (
     <div className="space-y-6">
@@ -19,8 +21,10 @@ const Index = () => {
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">Sales analytics and insights</p>
         </div>
-        
-        <Popover>
+
+        <div className="flex items-center gap-2">
+          <YearlySalesChart />
+          <Popover>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -43,11 +47,15 @@ const Index = () => {
             />
           </PopoverContent>
         </Popover>
+        </div>
       </div>
 
       <SalesOverview selectedDate={selectedDate} />
-      
-      <ProductSales selectedDate={selectedDate} />
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <LowStockProducts />
+        <ProductSales selectedDate={selectedDate} />
+      </div>
     </div>
   );
 };

@@ -1,19 +1,14 @@
-import { useState } from "react";
+import { useDate } from "@/contexts/DateContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { CalendarIcon } from "lucide-react";
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
 
 export default function Trending() {
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
-  const [selectedYear, setSelectedYear] = useState<Date>(new Date());
+  const { selectedDate } = useDate();
 
   const getTrendingProducts = async (startDate: Date, endDate: Date) => {
     const { data, error } = await supabase
@@ -44,18 +39,18 @@ export default function Trending() {
   };
 
   const { data: todayProducts, isLoading: loadingToday } = useQuery({
-    queryKey: ["trending-today"],
-    queryFn: () => getTrendingProducts(startOfDay(new Date()), endOfDay(new Date())),
+    queryKey: ["trending-today", selectedDate],
+    queryFn: () => getTrendingProducts(startOfDay(selectedDate), endOfDay(selectedDate)),
   });
 
   const { data: monthProducts, isLoading: loadingMonth } = useQuery({
-    queryKey: ["trending-month", selectedMonth],
-    queryFn: () => getTrendingProducts(startOfMonth(selectedMonth), endOfMonth(selectedMonth)),
+    queryKey: ["trending-month", selectedDate],
+    queryFn: () => getTrendingProducts(startOfMonth(selectedDate), endOfMonth(selectedDate)),
   });
 
   const { data: yearProducts, isLoading: loadingYear } = useQuery({
-    queryKey: ["trending-year", selectedYear],
-    queryFn: () => getTrendingProducts(startOfYear(selectedYear), endOfYear(selectedYear)),
+    queryKey: ["trending-year", selectedDate],
+    queryFn: () => getTrendingProducts(startOfYear(selectedDate), endOfYear(selectedDate)),
   });
 
   const renderTable = (products: any[] | undefined, isLoading: boolean) => {
@@ -118,7 +113,7 @@ export default function Trending() {
         <TabsContent value="today" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Today's Top Selling Products - {format(new Date(), "PPP")}</CardTitle>
+              <CardTitle>Top Selling Products - {format(selectedDate, "PPP")}</CardTitle>
             </CardHeader>
             <CardContent>
               {renderTable(todayProducts, loadingToday)}
@@ -127,28 +122,9 @@ export default function Trending() {
         </TabsContent>
 
         <TabsContent value="month" className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(selectedMonth, "MMMM yyyy")}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedMonth}
-                  onSelect={(date) => date && setSelectedMonth(date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
           <Card>
             <CardHeader>
-              <CardTitle>Top Selling Products - {format(selectedMonth, "MMMM yyyy")}</CardTitle>
+              <CardTitle>Top Selling Products - {format(selectedDate, "MMMM yyyy")}</CardTitle>
             </CardHeader>
             <CardContent>
               {renderTable(monthProducts, loadingMonth)}
@@ -157,28 +133,9 @@ export default function Trending() {
         </TabsContent>
 
         <TabsContent value="year" className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(selectedYear, "yyyy")}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedYear}
-                  onSelect={(date) => date && setSelectedYear(date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
           <Card>
             <CardHeader>
-              <CardTitle>Top Selling Products - {format(selectedYear, "yyyy")}</CardTitle>
+              <CardTitle>Top Selling Products - {format(selectedDate, "yyyy")}</CardTitle>
             </CardHeader>
             <CardContent>
               {renderTable(yearProducts, loadingYear)}
