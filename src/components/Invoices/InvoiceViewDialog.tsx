@@ -57,17 +57,17 @@ export function InvoiceViewDialog({ invoiceId, open, onOpenChange }: InvoiceView
 
   useEffect(() => {
     const generateQRCodes = async () => {
-      if (storeSettings?.whatsapp_channel) {
+      if (storeSettings?.whatsapp_link) {
         try {
-          const qr = await QRCode.toDataURL(storeSettings.whatsapp_channel, { width: 100 });
+          const qr = await QRCode.toDataURL(storeSettings.whatsapp_link, { width: 100 });
           setWhatsappQR(qr);
         } catch (err) {
           console.error("WhatsApp QR generation failed", err);
         }
       }
-      if (storeSettings?.instagram_page) {
+      if (storeSettings?.instagram_link) {
         try {
-          const qr = await QRCode.toDataURL(storeSettings.instagram_page, { width: 100 });
+          const qr = await QRCode.toDataURL(storeSettings.instagram_link, { width: 100 });
           setInstagramQR(qr);
         } catch (err) {
           console.error("Instagram QR generation failed", err);
