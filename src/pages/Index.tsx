@@ -53,8 +53,8 @@ const Index = () => {
       <SalesOverview selectedDate={selectedDate} />
 
       <div className="grid gap-6 md:grid-cols-2">
-        <LowStockProducts />
         <ProductSales selectedDate={selectedDate} />
+        <LowStockProducts />
       </div>
     </div>
   );

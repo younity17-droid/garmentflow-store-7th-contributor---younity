@@ -3,8 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Download, Trash2, XCircle, Search } from "lucide-react";
+import { Eye, Download, Trash2, XCircle, Search, CalendarIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
@@ -27,6 +30,7 @@ export default function Invoices() {
   const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
   const [cancelSaleId, setCancelSaleId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterDate, setFilterDate] = useState<Date | undefined>();
   const queryClient = useQueryClient();
 
   const { data: invoices, isLoading } = useQuery({
@@ -284,12 +288,43 @@ export default function Invoices() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by customer name or date..."
+              placeholder="Search by customer name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 w-[300px]"
+              className="pl-9 w-[250px]"
             />
           </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[200px] justify-start text-left font-normal",
+                  !filterDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {filterDate ? format(filterDate, "PP") : <span>Filter by date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={filterDate}
+                onSelect={setFilterDate}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          {filterDate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFilterDate(undefined)}
+            >
+              Clear
+            </Button>
+          )}
           <CreateInvoiceDialog />
         </div>
       </div>
@@ -310,11 +345,10 @@ export default function Invoices() {
             </TableHeader>
             <TableBody>
               {invoices?.filter((inv) => {
-                if (!searchQuery) return true;
                 const query = searchQuery.toLowerCase();
-                const customerMatch = inv.customer_name?.toLowerCase().includes(query);
-                const dateMatch = format(new Date(inv.created_at), "PP").toLowerCase().includes(query);
-                return customerMatch || dateMatch;
+                const customerMatch = !searchQuery || inv.customer_name?.toLowerCase().includes(query);
+                const dateMatch = !filterDate || format(new Date(inv.created_at), "PP") === format(filterDate, "PP");
+                return customerMatch && dateMatch;
               }).map((inv) => (
                 <TableRow key={inv.id}>
                   <TableCell className="font-medium">{inv.invoice_number}</TableCell>

@@ -147,7 +147,7 @@ export function CreateInvoiceDialog() {
   const resetForm = () => {
     setCustomerName("");
     setCustomerPhone("");
-    setDiscountAmount(0);
+    setDiscountAmount("" as any);
     setDiscountType('percentage');
     setPaymentStatus('done');
     setExpectedDate(undefined);

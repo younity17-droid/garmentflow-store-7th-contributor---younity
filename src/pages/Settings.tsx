@@ -20,7 +20,7 @@ export default function Settings() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["store-settings"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("store_settings").select("*").single();
+      const { data, error } = await supabase.from("store_settings").select("*").maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -83,6 +83,8 @@ export default function Settings() {
       low_stock_threshold: parseInt(formData.get("low_stock_threshold") as string) || 10,
       whatsapp_channel: (formData.get("whatsapp_channel") as string) || '',
       instagram_page: (formData.get("instagram_page") as string) || '',
+      whatsapp_tagline: (formData.get("whatsapp_tagline") as string) || 'Join our WhatsApp Group',
+      instagram_tagline: (formData.get("instagram_tagline") as string) || 'Follow us on Instagram',
     };
 
     const waLink = formData.get("whatsapp_channel") as string;
@@ -206,7 +208,7 @@ export default function Settings() {
 
           <div className="space-y-2">
             <Label htmlFor="tax_percentage">Default Tax Percentage (%)</Label>
-            <Input id="tax_percentage" name="tax_percentage" type="number" step="0.01" defaultValue={settings?.tax_percentage || 0} />
+            <Input id="tax_percentage" name="tax_percentage" type="number" step="0.01" defaultValue={settings?.tax_percentage || ""} placeholder="0" />
           </div>
 
           <div className="space-y-2">
@@ -218,6 +220,8 @@ export default function Settings() {
             <div className="space-y-2">
               <Label htmlFor="whatsapp_channel">WhatsApp Channel Link</Label>
               <Input id="whatsapp_channel" name="whatsapp_channel" defaultValue={settings?.whatsapp_channel || ""} placeholder="https://wa.me/..." />
+              <Label htmlFor="whatsapp_tagline" className="mt-2">WhatsApp Tagline</Label>
+              <Input id="whatsapp_tagline" name="whatsapp_tagline" defaultValue={settings?.whatsapp_tagline || "Join our WhatsApp Group"} placeholder="Join our WhatsApp Group" />
               {whatsappQR && (
                 <div className="mt-2 p-2 border rounded flex flex-col items-center">
                   <img src={whatsappQR} alt="WhatsApp QR" className="w-32 h-32" />
@@ -228,6 +232,8 @@ export default function Settings() {
             <div className="space-y-2">
               <Label htmlFor="instagram_page">Instagram Page Link</Label>
               <Input id="instagram_page" name="instagram_page" defaultValue={settings?.instagram_page || ""} placeholder="https://instagram.com/..." />
+              <Label htmlFor="instagram_tagline" className="mt-2">Instagram Tagline</Label>
+              <Input id="instagram_tagline" name="instagram_tagline" defaultValue={settings?.instagram_tagline || "Follow us on Instagram"} placeholder="Follow us on Instagram" />
               {instagramQR && (
                 <div className="mt-2 p-2 border rounded flex flex-col items-center">
                   <img src={instagramQR} alt="Instagram QR" className="w-32 h-32" />
