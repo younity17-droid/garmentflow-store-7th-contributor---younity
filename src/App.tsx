@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { DateProvider } from "@/contexts/DateContext";
 import { AppLayout } from "@/components/Layout/AppLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -29,6 +30,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <DateProvider>
             <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route
@@ -123,6 +125,7 @@ const App = () => (
             />
             <Route path="*" element={<NotFound />} />
             </Routes>
+            </DateProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

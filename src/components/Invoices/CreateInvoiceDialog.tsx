@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, X } from "lucide-react";
+import { Plus, X, CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format as formatDate } from "date-fns";
 import { toast } from "sonner";
 import { ProductSelectionDialog } from "./ProductSelectionDialog";
 
@@ -30,7 +34,7 @@ export function CreateInvoiceDialog() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [discountAmount, setDiscountAmount] = useState<number | "">("" as any);
   const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('percentage');
-  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'pending'>('paid');
+  const [paymentStatus, setPaymentStatus] = useState<'done' | 'pending'>('done');
   const [expectedDate, setExpectedDate] = useState<Date | undefined>();
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const queryClient = useQueryClient();
@@ -104,6 +108,8 @@ export function CreateInvoiceDialog() {
           discount_type: discountType,
           grand_total: grandTotal,
           created_by: user.id,
+          payment_status: paymentStatus,
+          expected_payment_date: paymentStatus === 'pending' && expectedDate ? formatDate(expectedDate, 'yyyy-MM-dd') : null,
           invoice_number: "", // Will be set by trigger
         })
         .select()
@@ -141,8 +147,10 @@ export function CreateInvoiceDialog() {
   const resetForm = () => {
     setCustomerName("");
     setCustomerPhone("");
-    setDiscountAmount(0);
+    setDiscountAmount("" as any);
     setDiscountType('percentage');
+    setPaymentStatus('done');
+    setExpectedDate(undefined);
     setItems([]);
   };
 
@@ -257,6 +265,48 @@ export function CreateInvoiceDialog() {
                   placeholder="Optional"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="paymentStatus">Payment Status</Label>
+                <Select value={paymentStatus} onValueChange={(v: 'done' | 'pending') => setPaymentStatus(v)}>
+                  <SelectTrigger id="paymentStatus">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="done">Payment Done</SelectItem>
+                    <SelectItem value="pending">Payment Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {paymentStatus === 'pending' && (
+                <div>
+                  <Label>Expected Payment Date (Optional)</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !expectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {expectedDate ? formatDate(expectedDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={expectedDate}
+                        onSelect={setExpectedDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
             </div>
 
             <div>

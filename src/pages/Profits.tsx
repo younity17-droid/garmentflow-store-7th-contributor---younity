@@ -1,15 +1,22 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useDate } from "@/contexts/DateContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, DollarSign, LineChart } from "lucide-react";
+import { TrendingUp, DollarSign, LineChart, CalendarIcon } from "lucide-react";
+import { YearlyProfitChart } from "@/components/Profits/YearlyProfitChart";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
 
 export default function Profits() {
   const [showGraph, setShowGraph] = useState(false);
+  const { selectedDate } = useDate();
+  const [localDate, setLocalDate] = useState<Date>(new Date());
 
   const getProfitData = async (startDate: Date, endDate: Date) => {
     const { data, error } = await supabase
@@ -66,18 +73,18 @@ export default function Profits() {
   };
 
   const { data: todayData } = useQuery({
-    queryKey: ["profit-today"],
-    queryFn: () => getProfitData(startOfDay(new Date()), endOfDay(new Date())),
+    queryKey: ["profit-today", localDate],
+    queryFn: () => getProfitData(startOfDay(localDate), endOfDay(localDate)),
   });
 
   const { data: monthData } = useQuery({
-    queryKey: ["profit-month"],
-    queryFn: () => getProfitData(startOfMonth(new Date()), endOfMonth(new Date())),
+    queryKey: ["profit-month", localDate],
+    queryFn: () => getProfitData(startOfMonth(localDate), endOfMonth(localDate)),
   });
 
   const { data: yearData } = useQuery({
-    queryKey: ["profit-year"],
-    queryFn: () => getProfitData(startOfYear(new Date()), endOfYear(new Date())),
+    queryKey: ["profit-year", localDate],
+    queryFn: () => getProfitData(startOfYear(localDate), endOfYear(localDate)),
   });
 
   const renderProfitCard = (title: string, amount: number, description: string) => (
@@ -135,11 +142,38 @@ export default function Profits() {
           <h1 className="text-3xl font-bold">Profits</h1>
           <p className="text-muted-foreground mt-1">Track your business profitability</p>
         </div>
-        <Button variant="outline" onClick={() => setShowGraph(!showGraph)}>
-          <LineChart className="mr-2 h-4 w-4" />
-          {showGraph ? "Hide" : "Show"} 12-Month Graph
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowGraph(true)}>
+            <LineChart className="mr-2 h-4 w-4" />
+            12-Month Graph
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[240px] justify-start text-left font-normal",
+                  !localDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {localDate ? format(localDate, "PPP") : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={localDate}
+                onSelect={(date) => date && setLocalDate(date)}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
+
+      <YearlyProfitChart open={showGraph} onOpenChange={setShowGraph} />
 
       <Tabs defaultValue="today" className="space-y-4">
         <TabsList>
@@ -149,7 +183,7 @@ export default function Profits() {
         </TabsList>
 
         <TabsContent value="today" className="space-y-4">
-          {renderProfitCard("Today's Profit", todayData?.totalProfit || 0, format(new Date(), "PPP"))}
+          {renderProfitCard("Today's Profit", todayData?.totalProfit || 0, format(localDate, "PPP"))}
           <Card>
             <CardHeader>
               <CardTitle>Product Profitability - Today</CardTitle>
@@ -161,7 +195,7 @@ export default function Profits() {
         </TabsContent>
 
         <TabsContent value="month" className="space-y-4">
-          {renderProfitCard("This Month's Profit", monthData?.totalProfit || 0, format(new Date(), "MMMM yyyy"))}
+          {renderProfitCard("This Month's Profit", monthData?.totalProfit || 0, format(localDate, "MMMM yyyy"))}
           <Card>
             <CardHeader>
               <CardTitle>Product Profitability - This Month</CardTitle>
@@ -173,7 +207,7 @@ export default function Profits() {
         </TabsContent>
 
         <TabsContent value="year" className="space-y-4">
-          {renderProfitCard("This Year's Profit", yearData?.totalProfit || 0, format(new Date(), "yyyy"))}
+          {renderProfitCard("This Year's Profit", yearData?.totalProfit || 0, format(localDate, "yyyy"))}
           <Card>
             <CardHeader>
               <CardTitle>Product Profitability - This Year</CardTitle>
