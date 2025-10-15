@@ -6,7 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -135,6 +146,81 @@ export default function Settings() {
     }
   };
 
+  const deleteAllDataMutation = useMutation({
+    mutationFn: async () => {
+      const tables = [
+        'invoice_items',
+        'invoices',
+        'products',
+        'categories',
+        'sizes',
+        'user_roles',
+        'store_settings'
+      ];
+
+      for (const table of tables) {
+        const { error } = await supabase.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        if (error) throw error;
+      }
+
+      const { data: productImages } = await supabase.storage.from('product-images').list();
+      if (productImages) {
+        const filePaths = productImages.map(file => file.name);
+        if (filePaths.length > 0) {
+          await supabase.storage.from('product-images').remove(filePaths);
+        }
+      }
+
+      const { data: storeAssets } = await supabase.storage.from('store-assets').list();
+      if (storeAssets) {
+        const filePaths = storeAssets.map(file => file.name);
+        if (filePaths.length > 0) {
+          await supabase.storage.from('store-assets').remove(filePaths);
+        }
+      }
+
+      const { data: newSettings, error: createError } = await supabase
+        .from("store_settings")
+        .insert({
+          store_name: "My Garment Store",
+          currency_symbol: "₹",
+          tax_percentage: 18
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      const defaultSizes = [
+        { name: 'XS', sort_order: 1 },
+        { name: 'S', sort_order: 2 },
+        { name: 'M', sort_order: 3 },
+        { name: 'L', sort_order: 4 },
+        { name: 'XL', sort_order: 5 },
+        { name: 'XXL', sort_order: 6 },
+        { name: 'XXXL', sort_order: 7 }
+      ];
+
+      const { error: sizesError } = await supabase.from('sizes').insert(defaultSizes);
+      if (sizesError) throw sizesError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+      toast({
+        title: "All data deleted successfully",
+        description: "Your store has been reset to default settings"
+      });
+    },
+    onError: (error) => {
+      console.error("Delete all data error:", error);
+      toast({
+        title: "Failed to delete data",
+        description: "An error occurred while deleting data",
+        variant: "destructive"
+      });
+    },
+  });
+
   if (isLoading) return <div>Loading...</div>;
 
   return (
@@ -261,6 +347,46 @@ export default function Settings() {
             <Button type="submit">Save Changes</Button>
           </div>
         </form>
+      </div>
+
+      <div className="rounded-lg border bg-card p-6 border-destructive">
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-destructive">Danger Zone</h3>
+          <p className="text-sm text-muted-foreground">Permanently delete all store data. This action cannot be undone.</p>
+        </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" className="w-full">
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete All Store Data
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete all data from your store including:
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>All products and inventory</li>
+                  <li>All invoices and sales records</li>
+                  <li>All categories and sizes</li>
+                  <li>All uploaded images</li>
+                  <li>Store settings will be reset to defaults</li>
+                </ul>
+                <p className="mt-3 font-semibold text-destructive">This action cannot be undone!</p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteAllDataMutation.mutate()}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Yes, Delete Everything
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
