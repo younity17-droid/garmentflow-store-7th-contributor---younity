@@ -133,8 +133,9 @@ export default function Colors() {
                 <Input
                   id="sortOrder"
                   type="number"
+                  min="0"
                   value={sortOrder}
-                  onChange={(e) => setSortOrder(Number(e.target.value))}
+                  onChange={(e) => setSortOrder(Math.max(0, Number(e.target.value)))}
                 />
               </div>
               <div className="flex justify-end gap-2">

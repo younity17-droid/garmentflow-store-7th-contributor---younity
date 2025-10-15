@@ -110,6 +110,11 @@ export default function Settings() {
       address: (formData.get("address") as string) || null,
       tax_percentage: parseFloat(formData.get("tax_percentage") as string) || 0,
       currency_symbol: formData.get("currency_symbol") as string,
+      low_stock_threshold: parseInt(formData.get("low_stock_threshold") as string) || 10,
+      whatsapp_channel: (formData.get("whatsapp_channel") as string) || '',
+      instagram_page: (formData.get("instagram_page") as string) || '',
+      whatsapp_tagline: (formData.get("whatsapp_tagline") as string) || 'Join our WhatsApp group',
+      instagram_tagline: (formData.get("instagram_tagline") as string) || 'Follow us on Instagram',
       logo_url: logoUrl
     };
 
@@ -217,9 +222,40 @@ export default function Settings() {
 
           <div className="space-y-2">
             <Label htmlFor="tax_percentage">Default Tax Percentage (%)</Label>
-            <Input id="tax_percentage" name="tax_percentage" type="number" step="0.01" defaultValue={settings?.tax_percentage || ""} placeholder="0" />
+            <Input id="tax_percentage" name="tax_percentage" type="number" step="0.01" min="0" defaultValue={settings?.tax_percentage || ""} placeholder="0" />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="low_stock_threshold">Low Stock Threshold</Label>
+            <Input id="low_stock_threshold" name="low_stock_threshold" type="number" min="0" defaultValue={settings?.low_stock_threshold || 10} placeholder="10" />
+          </div>
+
+          <div className="mb-6 mt-8">
+            <h3 className="text-lg font-semibold">Social Media Settings</h3>
+            <p className="text-sm text-muted-foreground">Add your social media links to display QR codes on invoices</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp_channel">WhatsApp Channel/Group Link</Label>
+              <Input id="whatsapp_channel" name="whatsapp_channel" type="url" defaultValue={settings?.whatsapp_channel || ""} placeholder="https://chat.whatsapp.com/..." />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="instagram_page">Instagram Page Link</Label>
+              <Input id="instagram_page" name="instagram_page" type="url" defaultValue={settings?.instagram_page || ""} placeholder="https://instagram.com/..." />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp_tagline">WhatsApp Tagline</Label>
+              <Input id="whatsapp_tagline" name="whatsapp_tagline" defaultValue={settings?.whatsapp_tagline || "Join our WhatsApp group"} placeholder="Join our WhatsApp group" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="instagram_tagline">Instagram Tagline</Label>
+              <Input id="instagram_tagline" name="instagram_tagline" defaultValue={settings?.instagram_tagline || "Follow us on Instagram"} placeholder="Follow us on Instagram" />
+            </div>
+          </div>
 
           <div className="flex justify-end">
             <Button type="submit">Save Changes</Button>

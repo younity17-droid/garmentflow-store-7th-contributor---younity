@@ -10,6 +10,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { ProductSelectionDialog } from "./ProductSelectionDialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface InvoiceItem {
   productId: string;
@@ -31,6 +36,8 @@ export function CreateInvoiceDialog() {
   const [discountAmount, setDiscountAmount] = useState<number | "">("" as any);
   const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('percentage');
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [paymentStatus, setPaymentStatus] = useState<'done' | 'pending'>('done');
+  const [expectedPaymentDate, setExpectedPaymentDate] = useState<Date>();
   const queryClient = useQueryClient();
 
   const { data: products } = useQuery({
@@ -141,6 +148,8 @@ export function CreateInvoiceDialog() {
           discount_type: discountType,
           grand_total: grandTotal,
           created_by: user.id,
+          payment_status: paymentStatus,
+          expected_payment_date: paymentStatus === 'pending' && expectedPaymentDate ? format(expectedPaymentDate, 'yyyy-MM-dd') : null,
           invoice_number: ""
         })
         .select()
@@ -222,6 +231,8 @@ export function CreateInvoiceDialog() {
     setDiscountAmount("" as any);
     setDiscountType('percentage');
     setItems([]);
+    setPaymentStatus('done');
+    setExpectedPaymentDate(undefined);
   };
 
   const handleSelectProduct = (product: any) => {
@@ -345,6 +356,48 @@ export function CreateInvoiceDialog() {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="paymentStatus">Payment Status</Label>
+                <Select value={paymentStatus} onValueChange={(v: 'done' | 'pending') => setPaymentStatus(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="done">Done</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {paymentStatus === 'pending' && (
+                <div>
+                  <Label>Expected Payment Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !expectedPaymentDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {expectedPaymentDate ? format(expectedPaymentDate, "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={expectedPaymentDate}
+                        onSelect={setExpectedPaymentDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
+            </div>
+
             <div>
               <div className="flex items-center justify-between mb-4">
                 <Label>Items</Label>
@@ -450,9 +503,9 @@ export function CreateInvoiceDialog() {
                           <Label>Quantity</Label>
                           <Input
                             type="number"
-                            min="1"
+                            min="0"
                             value={item.quantity}
-                            onChange={(e) => updateItem(index, "quantity", Number(e.target.value))}
+                            onChange={(e) => updateItem(index, "quantity", Math.max(0, Number(e.target.value)))}
                           />
                         </div>
 
@@ -461,8 +514,9 @@ export function CreateInvoiceDialog() {
                           <Input
                             type="number"
                             step="0.01"
+                            min="0"
                             value={item.unitPrice}
-                            onChange={(e) => updateItem(index, "unitPrice", Number(e.target.value))}
+                            onChange={(e) => updateItem(index, "unitPrice", Math.max(0, Number(e.target.value)))}
                           />
                         </div>
                       </div>

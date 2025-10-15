@@ -81,7 +81,7 @@ export default function Sizes() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sort_order">Sort Order</Label>
-                <Input id="sort_order" name="sort_order" type="number" defaultValue={editingId ? sizes?.find(s => s.id === editingId)?.sort_order : 0} />
+                <Input id="sort_order" name="sort_order" type="number" min="0" defaultValue={editingId ? sizes?.find(s => s.id === editingId)?.sort_order : 0} />
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

@@ -41,6 +41,8 @@ export interface Invoice {
   grand_total: number;
   pdf_url?: string;
   created_by?: string;
+  payment_status?: string;
+  expected_payment_date?: string;
   created_at: string;
 }
 
@@ -65,6 +67,11 @@ export interface StoreSettings {
   tax_percentage: number;
   logo_url?: string;
   currency_symbol: string;
+  low_stock_threshold?: number;
+  whatsapp_channel?: string;
+  instagram_page?: string;
+  whatsapp_tagline?: string;
+  instagram_tagline?: string;
   created_at: string;
   updated_at: string;
 }

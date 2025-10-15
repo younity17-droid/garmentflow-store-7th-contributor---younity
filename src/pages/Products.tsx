@@ -406,15 +406,15 @@ export default function Products() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="price_inr">Price (₹) *</Label>
-                    <Input id="price_inr" name="price_inr" type="number" step="0.01" defaultValue={editingId ? products?.find(p => p.id === editingId)?.price_inr : ""} required />
+                    <Input id="price_inr" name="price_inr" type="number" step="0.01" min="0" defaultValue={editingId ? products?.find(p => p.id === editingId)?.price_inr : ""} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cost_inr">Cost (₹)</Label>
-                    <Input id="cost_inr" name="cost_inr" type="number" step="0.01" defaultValue={editingId ? products?.find(p => p.id === editingId)?.cost_inr || "" : ""} />
+                    <Input id="cost_inr" name="cost_inr" type="number" step="0.01" min="0" defaultValue={editingId ? products?.find(p => p.id === editingId)?.cost_inr || "" : ""} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="quantity_in_stock">Stock *</Label>
-                    <Input id="quantity_in_stock" name="quantity_in_stock" type="number" defaultValue={editingId ? products?.find(p => p.id === editingId)?.quantity_in_stock : ""} required />
+                    <Input id="quantity_in_stock" name="quantity_in_stock" type="number" min="0" defaultValue={editingId ? products?.find(p => p.id === editingId)?.quantity_in_stock : ""} required />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -447,6 +447,7 @@ export default function Products() {
                             <Input
                               type="number"
                               step="0.01"
+                              min="0"
                               placeholder="Price"
                               value={sizePrices[size.id] || ""}
                               onChange={(e) => setSizePrices(prev => ({

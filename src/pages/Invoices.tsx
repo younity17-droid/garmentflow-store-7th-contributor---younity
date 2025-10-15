@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Download, Trash2, XCircle, Search, CalendarIcon } from "lucide-react";
+import { Eye, Download, Trash2, XCircle, Search, CalendarIcon, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -31,6 +31,8 @@ export default function Invoices() {
   const [cancelSaleId, setCancelSaleId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDate, setFilterDate] = useState<Date | undefined>();
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | 'done' | 'pending'>('all');
+  const [expectedDateFilter, setExpectedDateFilter] = useState<Date | undefined>();
   const queryClient = useQueryClient();
 
   const { data: invoices, isLoading } = useQuery({
@@ -345,6 +347,86 @@ export default function Invoices() {
               Clear
             </Button>
           )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "justify-start text-left font-normal",
+                  paymentStatusFilter === 'all' && !expectedDateFilter && "text-muted-foreground"
+                )}
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                Payment Status
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-4" align="end">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={paymentStatusFilter === 'all' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPaymentStatusFilter('all')}
+                      className="flex-1"
+                    >
+                      All
+                    </Button>
+                    <Button
+                      variant={paymentStatusFilter === 'done' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPaymentStatusFilter('done')}
+                      className="flex-1"
+                    >
+                      Done
+                    </Button>
+                    <Button
+                      variant={paymentStatusFilter === 'pending' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPaymentStatusFilter('pending')}
+                      className="flex-1"
+                    >
+                      Pending
+                    </Button>
+                  </div>
+                </div>
+                {paymentStatusFilter === 'pending' && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Expected Payment Date</label>
+                    <Calendar
+                      mode="single"
+                      selected={expectedDateFilter}
+                      onSelect={setExpectedDateFilter}
+                      className="rounded-md border"
+                    />
+                    {expectedDateFilter && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setExpectedDateFilter(undefined)}
+                        className="w-full"
+                      >
+                        Clear Date Filter
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+          {(paymentStatusFilter !== 'all' || expectedDateFilter) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setPaymentStatusFilter('all');
+                setExpectedDateFilter(undefined);
+              }}
+            >
+              Clear Filters
+            </Button>
+          )}
           <CreateInvoiceDialog />
         </div>
       </div>
@@ -360,6 +442,7 @@ export default function Invoices() {
                 <TableHead>Customer</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Total</TableHead>
+                <TableHead>Payment Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -368,13 +451,31 @@ export default function Invoices() {
                 const query = searchQuery.toLowerCase();
                 const customerMatch = !searchQuery || inv.customer_name?.toLowerCase().includes(query);
                 const dateMatch = !filterDate || format(new Date(inv.created_at), "PP") === format(filterDate, "PP");
-                return customerMatch && dateMatch;
+                const paymentMatch = paymentStatusFilter === 'all' || (inv.payment_status || 'done') === paymentStatusFilter;
+                const expectedDateMatch = !expectedDateFilter ||
+                  (inv.expected_payment_date && format(new Date(inv.expected_payment_date), "PP") === format(expectedDateFilter, "PP"));
+                return customerMatch && dateMatch && paymentMatch && expectedDateMatch;
               }).map((inv) => (
                 <TableRow key={inv.id}>
                   <TableCell className="font-medium">{inv.invoice_number}</TableCell>
                   <TableCell>{inv.customer_name || "-"}</TableCell>
                   <TableCell>{format(new Date(inv.created_at), "PP")}</TableCell>
                   <TableCell>₹{inv.grand_total}</TableCell>
+                  <TableCell>
+                    <span className={cn(
+                      "px-2 py-1 rounded-full text-xs font-medium",
+                      (inv.payment_status || 'done') === 'done'
+                        ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                        : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                    )}>
+                      {(inv.payment_status || 'done') === 'done' ? 'Done' : 'Pending'}
+                    </span>
+                    {inv.payment_status === 'pending' && inv.expected_payment_date && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Due: {format(new Date(inv.expected_payment_date), "PP")}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button variant="ghost" size="icon" onClick={() => handleViewInvoice(inv.id)}>
                       <Eye className="h-4 w-4" />
