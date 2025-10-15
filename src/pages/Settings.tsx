@@ -6,16 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, X, QrCode } from "lucide-react";
-import QRCode from 'qrcode';
+import { Upload, X } from "lucide-react";
 
 export default function Settings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>("");
-  const [whatsappQR, setWhatsappQR] = useState<string>("");
-  const [instagramQR, setInstagramQR] = useState<string>("");
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["store-settings"],
@@ -33,12 +30,7 @@ export default function Settings() {
           .insert({
             store_name: "My Garment Store",
             currency_symbol: "₹",
-            tax_percentage: 18,
-            low_stock_threshold: 10,
-            whatsapp_channel: "",
-            instagram_page: "",
-            whatsapp_tagline: "Join our WhatsApp Group",
-            instagram_tagline: "Follow us on Instagram"
+            tax_percentage: 18
           })
           .select()
           .single();
@@ -118,35 +110,8 @@ export default function Settings() {
       address: (formData.get("address") as string) || null,
       tax_percentage: parseFloat(formData.get("tax_percentage") as string) || 0,
       currency_symbol: formData.get("currency_symbol") as string,
-      logo_url: logoUrl,
-      low_stock_threshold: parseInt(formData.get("low_stock_threshold") as string) || 10,
-      whatsapp_channel: (formData.get("whatsapp_channel") as string) || '',
-      instagram_page: (formData.get("instagram_page") as string) || '',
-      whatsapp_tagline: (formData.get("whatsapp_tagline") as string) || 'Join our WhatsApp Group',
-      instagram_tagline: (formData.get("instagram_tagline") as string) || 'Follow us on Instagram',
+      logo_url: logoUrl
     };
-
-    const waLink = formData.get("whatsapp_channel") as string;
-    const igLink = formData.get("instagram_page") as string;
-
-    try {
-      if (waLink) {
-        const waQR = await QRCode.toDataURL(waLink);
-        setWhatsappQR(waQR);
-      } else {
-        setWhatsappQR("");
-      }
-
-      if (igLink) {
-        const igQR = await QRCode.toDataURL(igLink);
-        setInstagramQR(igQR);
-      } else {
-        setInstagramQR("");
-      }
-    } catch (error) {
-      console.error("QR Code generation error:", error);
-      toast({ title: "Failed to generate QR codes", variant: "destructive" });
-    }
 
     updateMutation.mutate(updates);
     setLogoFile(null);
@@ -255,37 +220,6 @@ export default function Settings() {
             <Input id="tax_percentage" name="tax_percentage" type="number" step="0.01" defaultValue={settings?.tax_percentage || ""} placeholder="0" />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="low_stock_threshold">Low Stock Threshold</Label>
-            <Input id="low_stock_threshold" name="low_stock_threshold" type="number" defaultValue={settings?.low_stock_threshold || 10} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp_channel">WhatsApp Channel Link</Label>
-              <Input id="whatsapp_channel" name="whatsapp_channel" defaultValue={settings?.whatsapp_channel || ""} placeholder="https://wa.me/..." />
-              <Label htmlFor="whatsapp_tagline" className="mt-2">WhatsApp Tagline</Label>
-              <Input id="whatsapp_tagline" name="whatsapp_tagline" defaultValue={settings?.whatsapp_tagline || "Join our WhatsApp Group"} placeholder="Join our WhatsApp Group" />
-              {whatsappQR && (
-                <div className="mt-2 p-2 border rounded flex flex-col items-center">
-                  <img src={whatsappQR} alt="WhatsApp QR" className="w-32 h-32" />
-                  <p className="text-xs text-muted-foreground mt-1">WhatsApp QR Code</p>
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="instagram_page">Instagram Page Link</Label>
-              <Input id="instagram_page" name="instagram_page" defaultValue={settings?.instagram_page || ""} placeholder="https://instagram.com/..." />
-              <Label htmlFor="instagram_tagline" className="mt-2">Instagram Tagline</Label>
-              <Input id="instagram_tagline" name="instagram_tagline" defaultValue={settings?.instagram_tagline || "Follow us on Instagram"} placeholder="Follow us on Instagram" />
-              {instagramQR && (
-                <div className="mt-2 p-2 border rounded flex flex-col items-center">
-                  <img src={instagramQR} alt="Instagram QR" className="w-32 h-32" />
-                  <p className="text-xs text-muted-foreground mt-1">Instagram QR Code</p>
-                </div>
-              )}
-            </div>
-          </div>
 
           <div className="flex justify-end">
             <Button type="submit">Save Changes</Button>
