@@ -55,10 +55,11 @@ function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <Package className="h-4 w-4 text-primary-foreground" />
-              </div>
-              {open && <span className="font-semibold">GarmentFlow</span>}
+              <img
+                src="/StockEasy.png"
+                alt="StockEasy Logo"
+                className="h-8 w-auto dark:invert"
+              />
             </div>
           </SidebarGroupLabel>
           <SidebarGroupContent className="mt-4">

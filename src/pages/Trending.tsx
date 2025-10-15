@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
@@ -16,6 +17,7 @@ import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear, en
 export default function Trending() {
   const { selectedDate } = useDate();
   const [localDate, setLocalDate] = useState<Date>(new Date());
+  const [sortBy, setSortBy] = useState<'quantity' | 'revenue'>('quantity');
 
   const getTrendingProducts = async (startDate: Date, endDate: Date) => {
     const { data, error } = await supabase
@@ -40,9 +42,7 @@ export default function Trending() {
       return acc;
     }, {});
 
-    return Object.values(productStats)
-      .sort((a: any, b: any) => b.total_quantity - a.total_quantity)
-      .slice(0, 20);
+    return Object.values(productStats).slice(0, 20);
   };
 
   const { data: todayProducts, isLoading: loadingToday } = useQuery({
@@ -67,6 +67,13 @@ export default function Trending() {
       return <div className="text-center py-8 text-muted-foreground">No sales data available</div>;
     }
 
+    const sortedProducts = [...products].sort((a: any, b: any) => {
+      if (sortBy === 'quantity') {
+        return b.total_quantity - a.total_quantity;
+      }
+      return b.total_revenue - a.total_revenue;
+    });
+
     return (
       <Table>
         <TableHeader>
@@ -79,7 +86,7 @@ export default function Trending() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {products.map((product: any, index: number) => (
+          {sortedProducts.map((product: any, index: number) => (
             <TableRow key={product.product_id}>
               <TableCell>
                 <Badge variant={index < 3 ? "default" : "secondary"}>
@@ -106,9 +113,21 @@ export default function Trending() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Trending Products</h1>
-          <p className="text-muted-foreground mt-1">Products ranked by sales quantity</p>
+          <p className="text-muted-foreground mt-1">
+            Products ranked by {sortBy === 'quantity' ? 'sales quantity' : 'revenue'}
+          </p>
         </div>
-        <Popover>
+        <div className="flex items-center gap-2">
+          <Select value={sortBy} onValueChange={(v: 'quantity' | 'revenue') => setSortBy(v)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="quantity">By Quantity</SelectItem>
+              <SelectItem value="revenue">By Revenue</SelectItem>
+            </SelectContent>
+          </Select>
+          <Popover>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -131,6 +150,7 @@ export default function Trending() {
             />
           </PopoverContent>
         </Popover>
+        </div>
       </div>
 
       <Tabs defaultValue="today" className="space-y-4">

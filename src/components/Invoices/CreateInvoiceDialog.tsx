@@ -90,9 +90,9 @@ export function CreateInvoiceDialog() {
       if (!user) throw new Error("Not authenticated");
 
       const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-      const discountValue = discountType === 'percentage' 
-        ? (subtotal * discountAmount) / 100 
-        : discountAmount;
+      const discountValue = discountType === 'percentage'
+        ? (subtotal * (Number(discountAmount) || 0)) / 100
+        : (Number(discountAmount) || 0);
       const taxAmount = subtotal * ((storeSettings?.tax_percentage || 0) / 100);
       const grandTotal = subtotal + taxAmount - discountValue;
 
@@ -226,9 +226,9 @@ export function CreateInvoiceDialog() {
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-  const discountValue = discountType === 'percentage' 
-    ? (subtotal * discountAmount) / 100 
-    : discountAmount;
+  const discountValue = discountType === 'percentage'
+    ? (subtotal * (Number(discountAmount) || 0)) / 100
+    : (Number(discountAmount) || 0);
   const taxAmount = subtotal * ((storeSettings?.tax_percentage || 0) / 100);
   const grandTotal = subtotal + taxAmount - discountValue;
 

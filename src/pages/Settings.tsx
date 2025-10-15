@@ -26,14 +26,26 @@ export default function Settings() {
     },
   });
 
+  const { data: { user } } = useQuery({
+    queryKey: ["user"],
+    queryFn: async () => {
+      return await supabase.auth.getUser();
+    },
+  });
+
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      const { error } = await supabase.from("store_settings").update(data).eq("id", settings!.id);
+      if (!settings) throw new Error("No settings found");
+      const { error } = await supabase.from("store_settings").update(data).eq("id", settings.id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["store-settings"] });
       toast({ title: "Settings updated successfully" });
+    },
+    onError: (error) => {
+      console.error("Settings update error:", error);
+      toast({ title: "Failed to update settings", variant: "destructive" });
     },
   });
 
