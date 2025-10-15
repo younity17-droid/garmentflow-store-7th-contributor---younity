@@ -45,8 +45,33 @@ export default function Invoices() {
   const { data: storeSettings } = useQuery({
     queryKey: ["store-settings"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("store_settings").select("*").single();
+      const { data, error } = await supabase.from("store_settings").select("*").maybeSingle();
       if (error) throw error;
+      
+      // If no settings exist, create default settings
+      if (!data) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+        
+        const { data: newSettings, error: createError } = await supabase
+          .from("store_settings")
+          .insert({
+            store_name: "My Garment Store",
+            currency_symbol: "₹",
+            tax_percentage: 18,
+            low_stock_threshold: 10,
+            whatsapp_channel: "",
+            instagram_page: "",
+            whatsapp_tagline: "Join our WhatsApp Group",
+            instagram_tagline: "Follow us on Instagram"
+          })
+          .select()
+          .single();
+          
+        if (createError) throw createError;
+        return newSettings;
+      }
+      
       return data;
     },
   });

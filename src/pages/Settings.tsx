@@ -22,16 +22,43 @@ export default function Settings() {
     queryFn: async () => {
       const { data, error } = await supabase.from("store_settings").select("*").maybeSingle();
       if (error) throw error;
+      
+      // If no settings exist, create default settings
+      if (!data) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+        
+        const { data: newSettings, error: createError } = await supabase
+          .from("store_settings")
+          .insert({
+            store_name: "My Garment Store",
+            currency_symbol: "₹",
+            tax_percentage: 18,
+            low_stock_threshold: 10,
+            whatsapp_channel: "",
+            instagram_page: "",
+            whatsapp_tagline: "Join our WhatsApp Group",
+            instagram_tagline: "Follow us on Instagram"
+          })
+          .select()
+          .single();
+          
+        if (createError) throw createError;
+        return newSettings;
+      }
+      
       return data;
     },
   });
 
-  const { data: { user } } = useQuery({
+  const { data: userResponse } = useQuery({
     queryKey: ["user"],
     queryFn: async () => {
       return await supabase.auth.getUser();
     },
   });
+  
+  const user = userResponse?.data?.user;
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -102,18 +129,23 @@ export default function Settings() {
     const waLink = formData.get("whatsapp_channel") as string;
     const igLink = formData.get("instagram_page") as string;
 
-    if (waLink) {
-      const waQR = await QRCode.toDataURL(waLink);
-      setWhatsappQR(waQR);
-    } else {
-      setWhatsappQR("");
-    }
+    try {
+      if (waLink) {
+        const waQR = await QRCode.toDataURL(waLink);
+        setWhatsappQR(waQR);
+      } else {
+        setWhatsappQR("");
+      }
 
-    if (igLink) {
-      const igQR = await QRCode.toDataURL(igLink);
-      setInstagramQR(igQR);
-    } else {
-      setInstagramQR("");
+      if (igLink) {
+        const igQR = await QRCode.toDataURL(igLink);
+        setInstagramQR(igQR);
+      } else {
+        setInstagramQR("");
+      }
+    } catch (error) {
+      console.error("QR Code generation error:", error);
+      toast({ title: "Failed to generate QR codes", variant: "destructive" });
     }
 
     updateMutation.mutate(updates);

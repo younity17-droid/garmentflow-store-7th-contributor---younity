@@ -71,6 +71,31 @@ export function CreateInvoiceDialog() {
     queryFn: async () => {
       const { data, error } = await supabase.from("store_settings").select("*").maybeSingle();
       if (error) throw error;
+      
+      // If no settings exist, create default settings
+      if (!data) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+        
+        const { data: newSettings, error: createError } = await supabase
+          .from("store_settings")
+          .insert({
+            store_name: "My Garment Store",
+            currency_symbol: "₹",
+            tax_percentage: 18,
+            low_stock_threshold: 10,
+            whatsapp_channel: "",
+            instagram_page: "",
+            whatsapp_tagline: "Join our WhatsApp Group",
+            instagram_tagline: "Follow us on Instagram"
+          })
+          .select()
+          .single();
+          
+        if (createError) throw createError;
+        return newSettings;
+      }
+      
       return data;
     },
   });
@@ -88,6 +113,20 @@ export function CreateInvoiceDialog() {
     mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      // Validate items
+      if (items.length === 0) {
+        throw new Error("At least one item is required");
+      }
+
+      // Check if all items are valid
+      const invalidItems = items.filter(item => 
+        !item.productId || !item.productName || item.quantity <= 0 || item.unitPrice < 0
+      );
+
+      if (invalidItems.length > 0) {
+        throw new Error("All items must have a valid product, quantity greater than 0, and non-negative price");
+      }
 
       const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
       const discountValue = discountType === 'percentage'
@@ -130,17 +169,58 @@ export function CreateInvoiceDialog() {
       const { error: itemsError } = await supabase.from("invoice_items").insert(invoiceItems);
       if (itemsError) throw itemsError;
 
+      // Reduce stock for each product
+      for (const item of items) {
+        if (item.productId) {
+          // Get current product stock
+          const { data: product, error: productError } = await supabase
+            .from("products")
+            .select("quantity_in_stock")
+            .eq("id", item.productId)
+            .single();
+          
+          if (productError) {
+            console.warn(`Failed to get product ${item.productId}:`, productError);
+            continue;
+          }
+
+          // Reduce stock
+          const newStock = Math.max(0, product.quantity_in_stock - item.quantity);
+          const { error: updateError } = await supabase
+            .from("products")
+            .update({ quantity_in_stock: newStock })
+            .eq("id", item.productId);
+          
+          if (updateError) {
+            console.warn(`Failed to update stock for product ${item.productId}:`, updateError);
+          }
+        }
+      }
+
       return invoice;
     },
     onSuccess: () => {
       toast.success("Invoice created successfully");
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] }); // Refresh product stock
       setOpen(false);
       resetForm();
     },
     onError: (error) => {
       console.error("Invoice creation error:", error);
-      toast.error("Failed to create invoice");
+      
+      // More detailed error logging
+      if (error?.message) {
+        console.error("Error message:", error.message);
+      }
+      if (error?.details) {
+        console.error("Error details:", error.details);
+      }
+      if (error?.hint) {
+        console.error("Error hint:", error.hint);
+      }
+      
+      toast.error(`Failed to create invoice: ${error?.message || 'Unknown error'}`);
     },
   });
 
@@ -231,6 +311,14 @@ export function CreateInvoiceDialog() {
     : (Number(discountAmount) || 0);
   const taxAmount = subtotal * ((storeSettings?.tax_percentage || 0) / 100);
   const grandTotal = subtotal + taxAmount - discountValue;
+  
+  // Check if all items are valid
+  const hasValidItems = items.length > 0 && items.every(item => 
+    item.productId && 
+    item.productName && 
+    item.quantity > 0 && 
+    item.unitPrice >= 0
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -503,7 +591,7 @@ export function CreateInvoiceDialog() {
           </Button>
           <Button
             onClick={() => createInvoice.mutate()}
-            disabled={items.length === 0 || createInvoice.isPending}
+            disabled={!hasValidItems || createInvoice.isPending}
           >
             {createInvoice.isPending ? "Creating..." : "Create Invoice"}
           </Button>
