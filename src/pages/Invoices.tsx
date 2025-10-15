@@ -58,12 +58,7 @@ export default function Invoices() {
           .insert({
             store_name: "My Garment Store",
             currency_symbol: "₹",
-            tax_percentage: 18,
-            low_stock_threshold: 10,
-            whatsapp_channel: "",
-            instagram_page: "",
-            whatsapp_tagline: "Join our WhatsApp Group",
-            instagram_tagline: "Follow us on Instagram"
+            tax_percentage: 18
           })
           .select()
           .single();
