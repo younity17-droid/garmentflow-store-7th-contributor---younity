@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAdminRole = async (userId: string) => {
     try {
+      // First check if user has existing roles
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -65,9 +66,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!error && data) {
         setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
+        return;
       }
+
+      // If no existing role, check if this is the first user and auto-assign owner role
+      const { data: allUsers, error: usersError } = await supabase
+        .from('user_roles')
+        .select('id', { count: 'exact' });
+
+      if (!usersError && allUsers && allUsers.length === 0) {
+        // This is the first user, make them owner
+        const { error: insertError } = await supabase
+          .from('user_roles')
+          .insert({ user_id: userId, role: 'owner' });
+
+        if (!insertError) {
+          setIsAdmin(true);
+          return;
+        }
+      }
+
+      setIsAdmin(false);
     } catch (error) {
       console.error('Error checking admin role:', error);
       setIsAdmin(false);
