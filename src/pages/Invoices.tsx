@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Download, Trash2, XCircle, Search, CalendarIcon, Filter } from "lucide-react";
+import { Eye, Download, Trash2, XCircle, Search, CalendarIcon, Filter, Edit } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -13,6 +13,7 @@ import jsPDF from "jspdf";
 import { toast } from "sonner";
 import { CreateInvoiceDialog } from "@/components/Invoices/CreateInvoiceDialog";
 import { InvoiceViewDialog } from "@/components/Invoices/InvoiceViewDialog";
+import { EditInvoiceDialog } from "@/components/Invoices/EditInvoiceDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +28,8 @@ import {
 export default function Invoices() {
   const [viewInvoiceId, setViewInvoiceId] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editInvoiceId, setEditInvoiceId] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
   const [cancelSaleId, setCancelSaleId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -153,9 +156,10 @@ export default function Invoices() {
       pdf.rect(15, yPos, pageWidth - 30, 8, "F");
       pdf.setFontSize(10);
       pdf.text("Product", 20, yPos + 5);
-      pdf.text("Size", 100, yPos + 5);
-      pdf.text("Qty", 130, yPos + 5);
-      pdf.text("Price", 150, yPos + 5);
+      pdf.text("Size", 85, yPos + 5);
+      pdf.text("Color", 110, yPos + 5);
+      pdf.text("Qty", 135, yPos + 5);
+      pdf.text("Price", 155, yPos + 5);
       pdf.text("Total", pageWidth - 25, yPos + 5, { align: "right" });
 
       // Items
@@ -163,9 +167,10 @@ export default function Invoices() {
       pdf.setFontSize(9);
       items?.forEach((item) => {
         pdf.text(item.product_name, 20, yPos);
-        pdf.text(item.size_name || "-", 100, yPos);
-        pdf.text(item.quantity.toString(), 130, yPos);
-        pdf.text(item.unit_price.toString(), 150, yPos);
+        pdf.text(item.size_name || "-", 85, yPos);
+        pdf.text(item.color_name || "-", 110, yPos);
+        pdf.text(item.quantity.toString(), 135, yPos);
+        pdf.text(item.unit_price.toString(), 155, yPos);
         pdf.text(item.total_price.toString(), pageWidth - 25, yPos, { align: "right" });
         yPos += 6;
       });
@@ -193,6 +198,49 @@ export default function Invoices() {
       pdf.setFont(undefined, "bold");
       pdf.text("Grand Total:", pageWidth - 70, yPos);
       pdf.text(invoice.grand_total.toString(), pageWidth - 25, yPos, { align: "right" });
+
+      // Add QR codes at the bottom if social media links exist
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const bottomY = pageHeight - 50;
+
+      if (storeSettings?.whatsapp_channel || storeSettings?.instagram_page) {
+        let qrX = 20;
+
+        if (storeSettings?.whatsapp_channel) {
+          try {
+            const QRCode = (await import('qrcode')).default;
+            const whatsappQR = await QRCode.toDataURL(storeSettings.whatsapp_channel, { width: 150 });
+            pdf.addImage(whatsappQR, 'PNG', qrX, bottomY, 30, 30);
+            pdf.setFontSize(8);
+            pdf.setFont(undefined, 'bold');
+            pdf.text(storeSettings.whatsapp_tagline || 'Join our WhatsApp', qrX + 15, bottomY + 35, { align: 'center' });
+            if (storeSettings.whatsapp_channel_name) {
+              pdf.setFont(undefined, 'normal');
+              pdf.text(storeSettings.whatsapp_channel_name, qrX + 15, bottomY + 40, { align: 'center' });
+            }
+            qrX += 60;
+          } catch (err) {
+            console.error('WhatsApp QR generation failed:', err);
+          }
+        }
+
+        if (storeSettings?.instagram_page) {
+          try {
+            const QRCode = (await import('qrcode')).default;
+            const instagramQR = await QRCode.toDataURL(storeSettings.instagram_page, { width: 150 });
+            pdf.addImage(instagramQR, 'PNG', qrX, bottomY, 30, 30);
+            pdf.setFontSize(8);
+            pdf.setFont(undefined, 'bold');
+            pdf.text(storeSettings.instagram_tagline || 'Follow us on Instagram', qrX + 15, bottomY + 35, { align: 'center' });
+            if (storeSettings.instagram_page_id) {
+              pdf.setFont(undefined, 'normal');
+              pdf.text(storeSettings.instagram_page_id, qrX + 15, bottomY + 40, { align: 'center' });
+            }
+          } catch (err) {
+            console.error('Instagram QR generation failed:', err);
+          }
+        }
+      }
 
       pdf.save(`Invoice-${invoice.invoice_number}.pdf`);
       toast.success("PDF downloaded successfully");
@@ -302,6 +350,11 @@ export default function Invoices() {
         invoiceId={viewInvoiceId}
         open={viewDialogOpen}
         onOpenChange={setViewDialogOpen}
+      />
+      <EditInvoiceDialog
+        invoiceId={editInvoiceId}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
       />
 
       <div className="flex items-center justify-between">
@@ -483,6 +536,11 @@ export default function Invoices() {
                     <Button variant="ghost" size="icon" onClick={() => downloadPDF(inv.id)}>
                       <Download className="h-4 w-4" />
                     </Button>
+                    {inv.payment_status === 'pending' && (
+                      <Button variant="ghost" size="icon" onClick={() => { setEditInvoiceId(inv.id); setEditDialogOpen(true); }}>
+                        <Edit className="h-4 w-4 text-blue-500" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => setDeleteInvoiceId(inv.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>

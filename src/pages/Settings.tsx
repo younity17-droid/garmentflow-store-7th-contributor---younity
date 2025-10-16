@@ -25,33 +25,39 @@ export default function Settings() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>("");
 
-  const { data: settings, isLoading } = useQuery({
+  const { data: settings, isLoading, error: settingsError } = useQuery({
     queryKey: ["store-settings"],
     queryFn: async () => {
       const { data, error } = await supabase.from("store_settings").select("*").maybeSingle();
-      if (error) throw error;
-      
+      if (error) {
+        console.error("Error fetching settings:", error);
+        throw error;
+      }
+
       // If no settings exist, create default settings
       if (!data) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("User not authenticated");
-        
         const { data: newSettings, error: createError } = await supabase
           .from("store_settings")
           .insert({
             store_name: "My Garment Store",
             currency_symbol: "₹",
-            tax_percentage: 18
+            tax_percentage: 18,
+            low_stock_threshold: 10
           })
           .select()
           .single();
-          
-        if (createError) throw createError;
+
+        if (createError) {
+          console.error("Error creating settings:", createError);
+          throw createError;
+        }
         return newSettings;
       }
-      
+
       return data;
     },
+    retry: 1,
+    retryDelay: 1000,
   });
 
   const { data: userResponse } = useQuery({
@@ -122,6 +128,8 @@ export default function Settings() {
       tax_percentage: parseFloat(formData.get("tax_percentage") as string) || 0,
       currency_symbol: formData.get("currency_symbol") as string,
       low_stock_threshold: parseInt(formData.get("low_stock_threshold") as string) || 10,
+      whatsapp_channel_name: (formData.get("whatsapp_channel_name") as string) || '',
+      instagram_page_id: (formData.get("instagram_page_id") as string) || '',
       whatsapp_channel: (formData.get("whatsapp_channel") as string) || '',
       instagram_page: (formData.get("instagram_page") as string) || '',
       whatsapp_tagline: (formData.get("whatsapp_tagline") as string) || 'Join our WhatsApp group',
@@ -221,7 +229,29 @@ export default function Settings() {
     },
   });
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (settingsError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-destructive">Error loading settings</p>
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ["store-settings"] })} className="mt-4">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -319,6 +349,17 @@ export default function Settings() {
           <div className="mb-6 mt-8">
             <h3 className="text-lg font-semibold">Social Media Settings</h3>
             <p className="text-sm text-muted-foreground">Add your social media links to display QR codes on invoices</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp_channel_name">WhatsApp Channel Name</Label>
+              <Input id="whatsapp_channel_name" name="whatsapp_channel_name" defaultValue={settings?.whatsapp_channel_name || ""} placeholder="e.g., Fashion Updates" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="instagram_page_id">Instagram Page ID/Username</Label>
+              <Input id="instagram_page_id" name="instagram_page_id" defaultValue={settings?.instagram_page_id || ""} placeholder="e.g., @yourstore" />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

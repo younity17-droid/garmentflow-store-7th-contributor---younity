@@ -15,10 +15,11 @@ export function ProductSales({ selectedDate }: ProductSalesProps) {
       const start = startOfDay(selectedDate);
       const end = endOfDay(selectedDate);
       
-      // Get all invoice items for the selected date
+      // Get all invoice items for the selected date (only paid invoices)
       const { data: invoices, error: invError } = await supabase
         .from("invoices")
         .select("id")
+        .eq("payment_status", "done")
         .gte("created_at", start.toISOString())
         .lte("created_at", end.toISOString());
       

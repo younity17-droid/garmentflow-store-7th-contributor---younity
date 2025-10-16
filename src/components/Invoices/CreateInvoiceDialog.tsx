@@ -162,6 +162,7 @@ export function CreateInvoiceDialog() {
         product_id: item.productId,
         product_name: item.productName,
         size_name: item.sizeName || null,
+        color_name: item.colorName || null,
         quantity: item.quantity,
         unit_price: item.unitPrice,
         total_price: item.totalPrice,
